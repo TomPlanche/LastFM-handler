@@ -1,7 +1,7 @@
 /**
- * @file src/assets/LastFM_handler.js
- * @description LastFM API handler
- * @author Tom Planche
+  * @file src/assets/LastFM_handler.js
+  * @description LastFM API handler
+  * @author Tom Planche
  */
 
 // IMPORTS ===================================================================================================  IMPORTS
@@ -27,7 +27,7 @@ export class NoUsernameProvided extends Error {
 }
 
 
-interface ITrack {
+export interface ITrack {
   "artist": {
     "mbid": string,
     "#text": string
@@ -65,6 +65,15 @@ interface ITrack {
 // END VARIABLES ======================================================================================= END VARIABLES
 
 // DECORATOR ================================================================================================ DECORATOR
+/**
+ * @function verifyUsername
+ * @description This function verifies that the username is not null.
+ * Then if the LastFMHandler instance has no username, sets it.
+ *
+ * @param target {function} The function to decorate.
+ * @param propertyKey {string} The property key of the function.
+ * @param descriptor {PropertyDescriptor} The descriptor of the function.
+ */
 function verifyUsername(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
   const originalMethod = descriptor.value;
 
@@ -117,7 +126,7 @@ class LastFM_handler {
    * @constructor
    * @description This is the constructor of the LastFMHandler class.
    * @param username {string | null} The username of the user.
-   */
+  */
   constructor(username: string | null = null) {
     this.username = username || null;
   }
@@ -127,7 +136,7 @@ class LastFM_handler {
    * @function setUsername
    * @description This function sets the username of the LastFMHandler instance.
    * @param username {string} The username to set.
-   */
+  */
   setUsername = (username: string) => {
     this.username = username;
   }
@@ -137,7 +146,7 @@ class LastFM_handler {
    * @description This function gets the user info from the LastFM API.
    * @param username {string} The username to get the info from.
    * @returns {Promise<string>} The user info.
-   */
+  */
   @verifyUsername
   getUserInfo(username: string | null = null) {
     const url = `${baseURL}?method=user.getinfo&user=${this.username}${endURL}`;
@@ -205,7 +214,7 @@ class LastFM_handler {
    * @returns {Promise<string|Error>}
    */
   @verifyUsername
-  getTopArtists(username = null) {
+  getTopArtists(username: string | null = null) {
     const url = `${baseURL}?method=user.gettopartists&user=${this.username}${endURL}`;
 
     // Return a promise
@@ -233,7 +242,7 @@ class LastFM_handler {
    * @returns {Promise<string|Error>} The currently playing song.
    */
   @verifyUsername
-  isCurrentlyPlaying(username = null): Promise<ITrack | Error> {
+  isCurrentlyPlaying(username: string | null = null): Promise<ITrack | Error> {
     const url = `${baseURL}?method=user.getrecenttracks&user=${this.username}${endURL}`;
 
     // Return a promise
@@ -257,10 +266,17 @@ class LastFM_handler {
     });
   }
 
+  /**
+   * @function getRecentTracks
+   * @description This function gets the recent tracks from the LastFM API for the user.
+   *
+   * @param username {string} The username to get the recent tracks from.
+   * @param limit {number} The number of tracks to get.
+   */
   @verifyUsername
   getRecentTracks(
-    username = null,
-    limit = 30
+    username: string | null = null,
+    limit: number = 30
   ): Promise<ITrack[] | Error> {
     const url = `${baseURL}?method=user.getrecenttracks&user=${this.username}&limit=${limit}${endURL}`;
 
@@ -272,6 +288,35 @@ class LastFM_handler {
             reject(new Error(data.message));
           } else {
             resolve(data.recenttracks.track);
+          }
+        })
+        .catch(error => {
+          reject(error);
+        });
+    });
+  }
+
+  /**
+   * @function getTopTracks
+   * @description This function gets the top tracks from the LastFM API for a given country.
+   *
+   * @param limit {number} The number of tracks to get.
+   * @param country {string} The country to get the top tracks from.
+   */
+  getTopTracks(
+    limit: number = 30,
+    country: string = "france"
+  ): Promise<ITrack[] | Error> {
+    const url = `${baseURL}?method=geo.gettoptracks&country=${country}&limit=${limit}${endURL}`;
+
+    return new Promise((resolve, reject) => {
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            reject(new Error(data.message));
+          } else {
+            resolve(data.tracks.track);
           }
         })
         .catch(error => {
