@@ -7,7 +7,7 @@
  */
 
 import LastFM_handler, {
-  T_UserInfo,
+  T_UserInfoRes,
   UsernameNotFoundError
 } from "../LasfFM_handler";
 
@@ -65,24 +65,52 @@ describe("LastFM_handler", () => {
 
     instance1.setUsername("TomPlanche");
 
-    await expect(instance1.fetchData("user.getInfo", {})).rejects.toThrow(UsernameNotFoundError);
+    await expect(instance1.getUserInfo()).rejects.toThrow(UsernameNotFoundError);
   });
 
   it("should return good user information", async () => {
-    const instance1 = LastFM_handler.getInstance();
-    const instance2 = LastFM_handler.getInstance();
+    const instance = LastFM_handler.getInstance();
 
-    instance1.setUsername("tom_planche");
+    instance.setUsername("tom_planche");
 
-    const userInfo = await instance2.fetchData("user.getInfo", {});
+    const userInfo = await instance.getUserInfo();
 
     for (const key in userInfo) {
-      const finalKey = key as keyof T_UserInfo;
+      const finalKey = key as keyof T_UserInfoRes;
       expect(userInfo[finalKey]).toBeDefined();
     }
 
     console.log(userInfo);
   });
+
+  it('should return top tracks (no params) ', async () => {
+    const instance = LastFM_handler.getInstance();
+
+    instance.setUsername("tom_planche");
+
+    const response = await instance.getUserTopTracks();
+
+    expect(response).toBeDefined();
+    expect(response.toptracks).toBeDefined();
+    expect(response.toptracks.track).toBeDefined();
+    expect(response.toptracks["@attr"]).toBeDefined();
+  });
+
+  it('should return top tracks (params) ', async () => {
+    const instance = LastFM_handler.getInstance('tom_planche');
+
+
+    const response = await instance.getRecentTracks({
+      page: 2,
+      limit: 20,
+    });
+
+    expect(response).toBeDefined();
+    expect(response.recenttracks).toBeDefined();
+
+    console.log(response);
+  });
+
 });
 
 describe("Random tests", () => {
