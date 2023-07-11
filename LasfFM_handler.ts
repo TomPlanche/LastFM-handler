@@ -13,8 +13,9 @@ import axios from 'axios';
 export const METHODS = {
   user: {
     getInfo: "user.getInfo",
+    getLovedTracks: "user.getLovedTracks",
+    getRecentTracks: "user.getRecentTracks",
     getTopTracks: "user.getTopTracks",
-    getRecentTracks: "user.getRecentTracks"
   }
 } as const;
 
@@ -24,43 +25,48 @@ interface I_LastFM_handler {
   endURL: string;
 
   username: string;
-
-  setUsername: T_setUsername;
   getUsername: T_getUsername;
+  setUsername: T_setUsername;
 }
 
 // type(s)
 type T_Period = "overall" | "7day" | "1month" | "3month" | "6month" | "12month";
 
 export type T_UserInfoRes = {
-  id: string;
-  name: string;
-  realname: string;
-  url: string;
-  image: string;
-  country: string;
   age: string;
+  bootstrap: string;
+  country: string;
   gender: string;
-  subscriber: string;
+  id: string;
+  image: string;
+  name: string;
   playcount: string;
   playlists: string;
-  bootstrap: string;
+  realname: string;
   registered: {
     unixtime: string;
   }
+  subscriber: string;
+  url: string;
+}
+
+export type T_UserLovedTracksParams = {
+  limit: number;
+  page: number;
+  user: string;
 }
 
 export type T_UserTopTracksParams = {
-  period: T_Period;
   limit: number;
   page: number;
+  period: T_Period;
 }
 
 export type T_RecentTracksParams = {
+  extended: boolean; // Includes extended data in each artist, and whether the user has loved each track
+  from: number;
   limit: number;
   page: number;
-  from: number;
-  extended: boolean; // Includes extended data in each artist, and whether or not the user has loved each track
   to: number;
 }
 
@@ -69,81 +75,107 @@ type T_Image = {
   "#text": string;
 }
 
+type T_Streamable = {
+  fulltrack: string;
+  "#text": string;
+}
+
+type T_ArtistFull = {
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  url: string;
+}
+
+type T_ArtistMid = {
+  mbid: string;
+  name: string;
+  url: string;
+}
+
+type T_ArtistShort = {
+  mbid: string;
+  '#text': string;
+}
+
+type T_LovedTrack = {
+  artist: T_ArtistMid,
+  date: {
+    uts: string;
+    "#text": string;
+  },
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  streamable: T_Streamable;
+  url: string;
+}
+
+export type T_UserLovedTracksRes = {
+  lovedtracks: {
+    track: T_LovedTrack[];
+  }
+}
+
 export type T_UserTopTracksTrack = {
+  artist: T_ArtistMid,
+  duration: number;
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  playcount: number;
   streamable: {
     fulltrack: boolean;
     "#text": boolean;
   }
-  mbid: string;
-  name: string;
-  "image": T_Image[];
-  artist: {
-    name: string;
-    mbid: string;
-    url: string;
-  }
   url: string;
-  duration: number;
   "@attr": {
     rank: number;
   }
-  playcount: number;
 }
 
 export type T_RecentTracksTrack = {
-  artist: {
-    mbid: string;
-    '#text': string;
-  }
-  streamable: boolean;
-  image: T_Image[];
-  mbid: string;
   album: {
     mbid: string;
     '#text': string;
   }
+  artist: T_ArtistShort;
+  image: T_Image[];
   name: string;
+  mbid: string;
+  streamable: boolean;
+  url: string;
   '@attr'?: {
     nowplaying: boolean;
   }
-  url: string;
 }
 
 type T_RecentTracksTrackExtended = T_RecentTracksTrack & {
-  artist: {
-    url: string;
-    name: string;
-    image: T_Image[];
-    mbid: string;
-  }
+  artist: T_ArtistFull;
   loved: boolean;
 }
 
 type T_RecentTracksTrackAll = T_RecentTracksTrack | T_RecentTracksTrackExtended;
 
+type T_TrackAttr = {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+  user: string;
+}
+
 type T_UserTopTracksRes = {
   toptracks: {
     track: T_UserTopTracksTrack[];
-    "@attr": {
-      user: string;
-      totalPages: number;
-      page: number;
-      perPage: number,
-      total: number;
-    }
+    "@attr": T_TrackAttr;
   }
 }
 
 type T_RecentTracksRes = {
   recenttracks: {
     track: T_RecentTracksTrackAll[];
-    "@attr": {
-        user: string;
-        totalPages: number;
-        page: number;
-        total: number;
-        perPage: number;
-    }
+    "@attr": T_TrackAttr;
   }
 }
 
@@ -160,17 +192,23 @@ type T_getUsername = () => string;
 type T_fetchData = (
   method: Method,
   params: Partial<T_GoodParams>,
-) => Promise<T_UserInfoRes | T_UserTopTracksRes | T_RecentTracksRes>;
+) => Promise<T_UserInfoRes | T_UserTopTracksRes | T_RecentTracksRes | T_UserLovedTracksRes>;
 
 type T_getUserInfo = () => Promise<T_UserInfoRes>;
-
+type T_getUserLovedTracks = (params?: Partial<T_UserLovedTracksParams>) => Promise<T_UserLovedTracksRes>;
 type T_getUserTopTracks = (params?: Partial<T_UserTopTracksParams>) => Promise<T_UserTopTracksRes>;
-
 type T_getRecentTracks = (params?: Partial<T_RecentTracksParams>) => Promise<T_RecentTracksRes>;
+type T_isNowPlaying = () => Promise<T_RecentTracksTrackAll>;
+
 // error class(es)
 export class UsernameNotFoundError extends Error {
   constructor(username: string) {
     super(`Username '${username}' not found.`);
+  }
+}
+export class NoCurrentlyPlayingTrackError extends Error {
+  constructor() {
+    super("No currently playing track.");
   }
 }
 // END VARIABLES ======================================================================================= END VARIABLES
@@ -259,6 +297,10 @@ class LastFM_handler implements I_LastFM_handler{
     return await this.fetchData(METHODS.user.getInfo, {}) as T_UserInfoRes;
   }
 
+  getUserLovedTracks: T_getUserLovedTracks = async (params) => {
+    return await this.fetchData(METHODS.user.getLovedTracks, params ?? {}) as T_UserLovedTracksRes;
+  }
+
   /**
    * @function getUserTopTracks
    * @description Gets the user top tracks.
@@ -274,6 +316,16 @@ class LastFM_handler implements I_LastFM_handler{
     return await this.fetchData(METHODS.user.getRecentTracks, params ?? {}) as T_RecentTracksRes;
   }
 
+  ifNowPlaying: T_isNowPlaying = async () => {
+    const track = await this.fetchData(METHODS.user.getRecentTracks, { limit: 1 }) as T_RecentTracksRes;
+
+    if (track.recenttracks.track[0]["@attr"]?.nowplaying) {
+      return await track.recenttracks.track[0] as T_RecentTracksTrackAll;
+    } else {
+      throw NoCurrentlyPlayingTrackError;
+    }
+
+  }
 }
 
 export default LastFM_handler;

@@ -111,6 +111,31 @@ describe("LastFM_handler", () => {
     console.log(response);
   });
 
+  // it('should return now playing', async () => {
+  //   const instance = LastFM_handler.getInstance('tom_planche');
+  //
+  //   const response = await instance.ifNowPlaying();
+  //
+  //   expect(response).toBeDefined();
+  //   expect(response.mbid).toBeDefined();
+  //
+  //   console.log(response);
+  //   console.log(response.mbid);
+  // });
+
+  it("should return loved tracks (no params) ", async () => {
+    const instance = LastFM_handler.getInstance();
+
+    instance.setUsername("tom_planche");
+
+    const response = await instance.getUserLovedTracks();
+
+    expect(response).toBeDefined();
+    expect(response.lovedtracks).toBeDefined();
+    expect(response.lovedtracks.track).toBeDefined();
+    expect(response.lovedtracks.track[0].artist).toBeDefined();
+  });
+
 });
 
 describe("Random tests", () => {
