@@ -1,7 +1,7 @@
 /**
  * @file src/assets/LastFM_handler.ts
  * @description LastFM API handler.
- * @author Tom Planche
+ * @author Tom Planche (@tomPlanche)
  */
 
 // IMPORTS ===================================================================================================  IMPORTS
