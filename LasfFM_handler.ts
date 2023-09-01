@@ -13,8 +13,9 @@ import axios from 'axios';
 export const METHODS = {
   user: {
     getInfo: "user.getInfo",
+    getLovedTracks: "user.getLovedTracks",
+    getRecentTracks: "user.getRecentTracks",
     getTopTracks: "user.getTopTracks",
-    getRecentTracks: "user.getRecentTracks"
   }
 } as const;
 
@@ -24,14 +25,118 @@ interface I_LastFM_handler {
   endURL: string;
 
   username: string;
-
-  setUsername: T_setUsername;
   getUsername: T_getUsername;
+  setUsername: T_setUsername;
 }
 
 // type(s)
 type T_Period = "overall" | "7day" | "1month" | "3month" | "6month" | "12month";
 
+// params type(s)
+type T_UserTopTracksParams = {
+  limit: number;
+  page: number;
+  period: T_Period;
+}
+
+type T_RecentTracksParams = {
+  extended: boolean; // Includes extended data in each artist, and whether the user has loved each track
+  from: number;
+  limit: number;
+  page: number;
+  to: number;
+}
+
+type T_UserLovedTracksParams = {
+  limit: number;
+  page: number;
+}
+// track type(s)
+type T_Image = {
+  size: string;
+  "#text": string;
+}
+
+type T_ArtistS = {
+   mbid: string;
+  '#text': string;
+}
+
+type T_ArtistM = {
+  mbid: string;
+  name: string;
+  url: string;
+}
+
+type T_ArtistL = {
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  url: string;
+}
+
+type T_StreamableS = {
+  fulltrack: boolean | string;
+}
+
+type T_StreamableL = {
+  fulltrack: boolean | string;
+  "#text": boolean | string;
+}
+
+type T_Attr = {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+  user: string;
+}
+
+type T_UserTopTracksTrack = {
+  artist: T_ArtistM;
+  duration: number | string;
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  playcount: number | string;
+  streamable: T_StreamableL
+  url: string;
+
+  "@attr": {
+    rank: number | string;
+  }
+}
+
+type T_RecentTracksTrack = {
+  album: {
+    mbid: string;
+    '#text': string;
+  }
+  artist: T_ArtistS;
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  streamable: T_StreamableS
+  url: string;
+
+  '@attr'?: {
+    nowplaying: boolean | string;
+  }
+}
+
+type T_RecentTracksTrackExtended = T_RecentTracksTrack & {
+  artist: T_ArtistL;
+  loved: boolean;
+}
+
+type T_RecentTracksTrackAll = T_RecentTracksTrack | T_RecentTracksTrackExtended;
+
+type T_GoodParams = T_UserTopTracksParams;
+
+type Methods = typeof METHODS;
+type Method = Methods["user"][keyof Methods["user"]];
+
+// response type(s)
 export type T_UserInfoRes = {
   age: number;
   album_count: number | string;
@@ -54,114 +159,50 @@ export type T_UserInfoRes = {
   url: string;
 }
 
-export type T_UserTopTracksParams = {
-  period: T_Period;
-  limit: number;
-  page: number;
+type T_RecentTracksRes = {
+  recenttracks: {
+    track: T_RecentTracksTrackAll[];
+    "@attr": T_Attr;
+  }
 }
-
-export type T_RecentTracksParams = {
-  limit: number;
-  page: number;
-  from: number;
-  extended: boolean; // Includes extended data in each artist, and whether the user has loved each track
-  to: number;
-}
-
-type T_Image = {
-  size: string;
-  "#text": string;
-}
-
-export type T_UserTopTracksTrack = {
-  streamable: {
-    fulltrack: boolean | string;
-    "#text": boolean | string;
-  }
-  mbid: string;
-  name: string;
-  "image": T_Image[];
-  artist: {
-    name: string;
-    mbid: string;
-    url: string;
-  }
-  url: string;
-  duration: number | string;
-  "@attr": {
-    rank: number | string;
-  }
-  playcount: number | string;
-}
-
-export type T_RecentTracksTrack = {
-  artist: {
-    mbid: string;
-    '#text': string;
-  }
-  streamable: boolean | string;
-  image: T_Image[];
-  mbid: string;
-  album: {
-    mbid: string;
-    '#text': string;
-  }
-  name: string;
-  '@attr'?: {
-    nowplaying: boolean | string;
-  }
-  url: string;
-}
-
-type T_RecentTracksTrackExtended = T_RecentTracksTrack & {
-  artist: {
-    url: string;
-    name: string;
-    image: T_Image[];
-    mbid: string;
-  }
-  loved: boolean;
-}
-
-export type T_RecentTracksTrackAll = T_RecentTracksTrack | T_RecentTracksTrackExtended;
 
 type T_UserTopTracksRes = {
   toptracks: {
     track: T_UserTopTracksTrack[];
-    "@attr": {
-      user: string;
-      totalPages: number;
-      page: number;
-      perPage: number,
-      total: number;
-    }
+    "@attr": T_Attr;
   }
 }
 
-type T_RecentTracksRes = {
-  recenttracks: {
-    track: T_RecentTracksTrackAll[];
-    "@attr": {
-      user: string;
-      totalPages: number;
-      page: number;
-      total: number;
-      perPage: number;
-    }
+type T_UserLovedTracksTrack = {
+  artist: T_ArtistM;
+  date: {
+    uts: number
+    "#text": Date;
+  }
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  streamable: T_StreamableL;
+  url: string;
+}
+
+type T_UserLovedTracksRes = {
+  lovedtracks: {
+    track: T_UserLovedTracksTrack[];
+    "@attr": T_Attr;
   }
 }
 
-type T_GoodParams = T_UserTopTracksParams;
-
-type Methods = typeof METHODS;
-type Method = Methods["user"][keyof Methods["user"]];
+type T_allResponse =
+  T_UserInfoRes
+  | T_UserTopTracksRes
+  | T_RecentTracksRes
+  | T_UserLovedTracksRes;
 
 // Methods types
 type T_getInstance = (username?: string) => LastFM_handler;
 type T_setUsername = (username: string) => void;
 type T_getUsername = () => string;
-
-type T_allResponse = T_UserInfoRes | T_UserTopTracksRes | T_RecentTracksRes;
 
 type T_fetchData = (
   method: Method,
@@ -171,6 +212,8 @@ type T_fetchData = (
 type T_getUserInfo = () => Promise<T_UserInfoRes>;
 type T_getUserTopTracks = (params?: Partial<T_UserTopTracksParams>) => Promise<T_UserTopTracksRes>;
 type T_getRecentTracks = (params?: Partial<T_RecentTracksParams>) => Promise<T_RecentTracksRes>
+type T_getUserLovedTracks = (params?: Partial<T_UserLovedTracksParams>) => Promise<T_UserLovedTracksRes>;
+
 type T_isNowPlaying = () => Promise<T_RecentTracksTrackAll>;
 
 // error class(es)
@@ -194,13 +237,14 @@ export class NoCurrentlyPlayingTrackError extends Error {
  * @description Casts the response to the correct type. The API returns types in string, so we need to cast them.
  *
  * @param response {T_allResponse} The response to cast.
- * @returns {T_allResponse} The casted response.
+ * @returns {T_allResponse} The cast response.
  */
-const castResponse = <T extends T_UserInfoRes | T_RecentTracksRes | T_UserTopTracksRes>(response: T): T => {
+const castResponse = <T extends T_allResponse>(response: T): T => {
   // Check which type the response is
   if ("recenttracks" in response) {
     response.recenttracks.track.forEach((track) => {
       track['@attr'] = track['@attr'] || {nowplaying: false};
+      // @ts-ignore
       track.streamable = track.streamable === "1";
     })
 
@@ -214,6 +258,18 @@ const castResponse = <T extends T_UserInfoRes | T_RecentTracksRes | T_UserTopTra
       track.duration = Number(track.duration);
       track.playcount = Number(track.playcount);
       track["@attr"].rank = Number(track["@attr"].rank);
+    })
+
+    return response;
+  }
+
+  if ("lovedtracks" in response) {
+    response.lovedtracks.track.forEach((track) => {
+      track.streamable.fulltrack = track.streamable.fulltrack === "1";
+      track.streamable["#text"] = track.streamable["#text"] === "1";
+
+      track.date.uts = Number(track.date.uts);
+      track.date["#text"] = new Date(track.date["#text"]);
     })
 
     return response;
@@ -280,19 +336,16 @@ class LastFM_handler implements I_LastFM_handler {
     return await this.fetchData(METHODS.user.getInfo, {}) as T_UserInfoRes;
   }
 
-  /**
-   * @function getUserTopTracks
-   * @description Gets the user top tracks.
-   *
-   * @param params {T_UserTopTracksParams} The params to pass to the API.
-   * @returns {Promise<T_UserTopTracksRes>}
-   */
   getUserTopTracks: T_getUserTopTracks = async (params) => {
     return await this.fetchData(METHODS.user.getTopTracks, params ?? {}) as T_UserTopTracksRes;
   }
 
   getRecentTracks: T_getRecentTracks = async (params) => {
     return await this.fetchData(METHODS.user.getRecentTracks, params ?? {}) as T_RecentTracksRes;
+  }
+
+  getUserLovedTracks: T_getUserLovedTracks = async (params) => {
+    return await this.fetchData(METHODS.user.getLovedTracks, params ?? {}) as T_UserLovedTracksRes;
   }
 
   ifNowPlaying: T_isNowPlaying = async () => {
