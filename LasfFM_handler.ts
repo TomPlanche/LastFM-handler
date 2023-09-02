@@ -10,12 +10,44 @@ import axios from 'axios';
 // END IMPORTS ==========================================================================================   END IMPORTS
 
 // VARIABLES ================================================================================================ VARIABLES
+export const ERROR_CODES = {
+  // 1 : This error does not exist
+  STATUS_INVALID_SERVICE: 2,
+  STATUS_INVALID_METHOD: 3,
+  STATUS_AUTH_FAILED: 4,
+  STATUS_INVALID_FORMAT: 5,
+  STATUS_INVALID_PARAMS: 6,
+  STATUS_INVALID_RESOURCE: 7,
+  STATUS_OPERATION_FAILED: 8,
+  STATUS_INVALID_SK: 9,
+  STATUS_INVALID_API_KEY: 10,
+  STATUS_OFFLINE: 11,
+  STATUS_SUBSCRIBERS_ONLY: 12,
+  STATUS_INVALID_SIGNATURE: 13,
+  STATUS_TOKEN_UNAUTHORIZED: 14,
+  STATUS_TOKEN_EXPIRED: 15,
+  STATUS_TEMPORARILY_UNAVAILABLE: 16,
+  STATUS_LOGIN_REQUIRED: 17,
+  STATUS_TRIAL_EXPIRED: 18,
+  // # 19 : This error does not exist
+  STATUS_NOT_ENOUGH_CONTENT: 20,
+  STATUS_NOT_ENOUGH_MEMBERS: 21,
+  STATUS_NOT_ENOUGH_FANS: 22,
+  STATUS_NOT_ENOUGH_NEIGHBOURS: 23,
+  STATUS_NO_PEAK_RADIO: 24,
+  STATUS_RADIO_NOT_FOUND: 25,
+  STATUS_API_KEY_SUSPENDED: 26,
+  STATUS_DEPRECATED: 27
+}
+
 export const METHODS = {
   user: {
     getInfo: "user.getInfo",
     getLovedTracks: "user.getLovedTracks",
     getRecentTracks: "user.getRecentTracks",
     getTopTracks: "user.getTopTracks",
+    getPersonalTags: 'user.getPersonalTags',
+    getFriends: 'user.getFriends',
   }
 } as const;
 
@@ -29,29 +61,10 @@ interface I_LastFM_handler {
   setUsername: T_setUsername;
 }
 
-// type(s)
+// TYPES ============
+// General types
 type T_Period = "overall" | "7day" | "1month" | "3month" | "6month" | "12month";
 
-// params type(s)
-type T_UserTopTracksParams = {
-  limit: number;
-  page: number;
-  period: T_Period;
-}
-
-type T_RecentTracksParams = {
-  extended: boolean; // Includes extended data in each artist, and whether the user has loved each track
-  from: number;
-  limit: number;
-  page: number;
-  to: number;
-}
-
-type T_UserLovedTracksParams = {
-  limit: number;
-  page: number;
-}
-// track type(s)
 type T_Image = {
   size: string;
   "#text": string;
@@ -92,6 +105,46 @@ type T_Attr = {
   user: string;
 }
 
+type T_RegistredS = {
+  unixtime: number | string;
+}
+
+type T_RegistredL = {
+  unixtime: number | string;
+  "#text": Date;
+}
+
+type T_ERROR = {
+  code: number;
+  message: string;
+}
+// params type(s)
+type T_UserTopTracksParams = {
+  limit: number;
+  page: number;
+  period: T_Period;
+}
+
+type T_RecentTracksParams = {
+  extended: boolean; // Includes extended data in each artist, and whether the user has loved each track
+  from: number;
+  limit: number;
+  page: number;
+  to: number;
+}
+
+type T_UserLovedTracksParams = {
+  limit: number;
+  page: number;
+}
+
+type T_UserGetFriendsParams = {
+  recenttracks: boolean;
+  limit: number;
+  page: number;
+}
+
+// track type(s)
 type T_UserTopTracksTrack = {
   artist: T_ArtistM;
   duration: number | string;
@@ -150,9 +203,7 @@ export type T_UserInfoRes = {
   playcount: number | string;
   playlists: number | string;
   realname: string;
-  registered: {
-    unixtime: string;
-  }
+  registered: T_RegistredS
   subscriber: number | string;
   track_count: number | string;
   type: string;
@@ -193,26 +244,57 @@ type T_UserLovedTracksRes = {
   }
 }
 
+type T_UserFriendsUser = {
+  bootstrap: boolean | string;
+  country: string;
+  image: T_Image;
+  name: string;
+  playlists: number | string;
+  playcount: number | string;
+  registered: T_RegistredL
+  realname: string;
+  subscriber: number | string;
+  type: string;
+  url: string;
+}
+
+type T_UserFriendsRes = {
+  friends: {
+    "@attr": T_Attr;
+    user: T_UserFriendsUser[];
+  }
+}
+
+type T_ErrorRes = {
+  error: T_ERROR;
+}
+
 type T_allResponse =
   T_UserInfoRes
   | T_UserTopTracksRes
   | T_RecentTracksRes
-  | T_UserLovedTracksRes;
+  | T_UserLovedTracksRes
+  | T_UserFriendsRes;
 
-// Methods types
+// Function types
+
+// Class types
 type T_getInstance = (username?: string) => LastFM_handler;
 type T_setUsername = (username: string) => void;
 type T_getUsername = () => string;
 
+// Methods types
 type T_fetchData = (
   method: Method,
   params: Partial<T_GoodParams>,
-) => Promise<T_allResponse>;
+) => Promise<T_allResponse | T_ErrorRes>;
 
+// User methods types
 type T_getUserInfo = () => Promise<T_UserInfoRes>;
 type T_getUserTopTracks = (params?: Partial<T_UserTopTracksParams>) => Promise<T_UserTopTracksRes>;
 type T_getRecentTracks = (params?: Partial<T_RecentTracksParams>) => Promise<T_RecentTracksRes>
 type T_getUserLovedTracks = (params?: Partial<T_UserLovedTracksParams>) => Promise<T_UserLovedTracksRes>;
+type T_getUserFriends = (params?: Partial<T_UserGetFriendsParams>) => Promise<T_UserFriendsRes>;
 
 type T_isNowPlaying = () => Promise<T_RecentTracksTrackAll>;
 
@@ -239,7 +321,22 @@ export class NoCurrentlyPlayingTrackError extends Error {
  * @param response {T_allResponse} The response to cast.
  * @returns {T_allResponse} The cast response.
  */
-const castResponse = <T extends T_allResponse>(response: T): T => {
+const castResponse = <T extends T_allResponse | T_ErrorRes>(response: T): T => {
+  if ("error" in response) {
+    const errorName = Object.keys(ERROR_CODES).find((key) => {
+      const finalKey = key as keyof typeof ERROR_CODES;
+
+      return ERROR_CODES[finalKey] === Number(response.error);
+    });
+
+    const finalResponse = response as T_ErrorRes;
+
+    throw {
+      code: finalResponse.error.code,
+      message: `${errorName} (${finalResponse.error.code}): ${finalResponse.error.message}`
+    }
+  }
+
   // Check which type the response is
   if ("recenttracks" in response) {
     response.recenttracks.track.forEach((track) => {
@@ -270,6 +367,18 @@ const castResponse = <T extends T_allResponse>(response: T): T => {
 
       track.date.uts = Number(track.date.uts);
       track.date["#text"] = new Date(track.date["#text"]);
+    })
+
+    return response;
+  }
+
+  if ("friends" in response) {
+    response.friends.user.forEach((user) => {
+      user.bootstrap = user.bootstrap === "1";
+      user.playlists = Number(user.playlists);
+      user.playcount = Number(user.playcount);
+      user.registered.unixtime = Number(user.registered.unixtime);
+      user.subscriber = Number(user.subscriber);
     })
 
     return response;
@@ -348,6 +457,10 @@ class LastFM_handler implements I_LastFM_handler {
     return await this.fetchData(METHODS.user.getLovedTracks, params ?? {}) as T_UserLovedTracksRes;
   }
 
+  getUserFriends: T_getUserFriends = async (params) => {
+    return await this.fetchData(METHODS.user.getFriends, params ?? {}) as T_UserFriendsRes;
+  }
+
   ifNowPlaying: T_isNowPlaying = async () => {
     const track = castResponse(
       await this.fetchData(METHODS.user.getRecentTracks, {limit: 1}) as T_RecentTracksRes
@@ -384,22 +497,35 @@ class LastFM_handler implements I_LastFM_handler {
     return new Promise((resolve, reject) => {
       axios.get(url)
         .then((response) => {
-          resolve(response.data as T_UserInfoRes);
+          resolve(response.data);
         })
         // if the error is like {error: 6, message: "User not found"}
         .catch((error) => {
           // Check if error is due to Network problem
           if (error.code === "ERR_NETWORK") {
-            reject(new Error("No internet connexion found, switching to auto mode."))
+            reject({
+              error: 0,
+              message: "Network error."
+            })
             // Reject does not cancel the thread - not sure
             return
           }
 
-          if (error.response.data.message === "User not found") {
-            reject(new UsernameNotFoundError(this.username));
+          const errorName = Object.keys(ERROR_CODES).find((key) => {
+            const finalKey = key as keyof typeof ERROR_CODES;
+
+            return ERROR_CODES[finalKey] === Number(error.response.data.error);
+          });
+
+          if (errorName) {
+            reject({
+              error: error.response.data.error,
+              message: `${errorName} (${error.response.data.error}): ${error.response.data.message}`
+            });
+
+            return
           }
 
-          console.log(`Error not classified: ${error.response.data}`);
           reject(error);
         })
     });

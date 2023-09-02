@@ -7,11 +7,11 @@
  */
 
 import LastFM_handler, {
-  T_UserInfoRes,
-  UsernameNotFoundError
+  ERROR_CODES,
+  T_UserInfoRes
 } from "../LasfFM_handler";
 
-describe("LastFM_handler", () => {
+describe("LastFM_handler Tests", () => {
   it("should return the same instance", () => {
     const instance1 = LastFM_handler.getInstance();
     const instance2 = LastFM_handler.getInstance();
@@ -61,11 +61,11 @@ describe("LastFM_handler", () => {
   })
 
   it("should return User not found error", async () => {
-    const instance1 = LastFM_handler.getInstance();
+    const instance = LastFM_handler.getInstance("TomPlanche");
 
-    instance1.setUsername("TomPlanche");
-
-    await expect(instance1.getUserInfo()).rejects.toThrow(UsernameNotFoundError);
+    await instance.getUserInfo().catch((err) => {
+      expect(err.error).toBe(ERROR_CODES.STATUS_INVALID_PARAMS);
+    });
   });
 
   it("should return good user information", async () => {
@@ -79,8 +79,6 @@ describe("LastFM_handler", () => {
       const finalKey = key as keyof T_UserInfoRes;
       expect(userInfo[finalKey]).toBeDefined();
     }
-
-    console.log(userInfo);
   });
 
   it('should return top tracks (no params) ', async () => {
@@ -107,8 +105,6 @@ describe("LastFM_handler", () => {
 
     expect(response).toBeDefined();
     expect(response.recenttracks).toBeDefined();
-
-    console.log(response);
   });
 
   // it('should return now playing', async () => {
@@ -136,10 +132,16 @@ describe("LastFM_handler", () => {
     expect(response.lovedtracks.track[0].artist).toBeDefined();
   });
 
+  it("should catch no friends error", async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    await instance.getUserFriends().catch((err) => {
+      expect(err.error).toBe(ERROR_CODES.STATUS_INVALID_PARAMS);
+    })
+  });
 });
 
 describe("Random tests", () => {
-  
   type T_GoodParams = {
     page: number;
     limit: number;
