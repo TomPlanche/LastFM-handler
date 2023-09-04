@@ -48,6 +48,13 @@ export const METHODS = {
     getTopTracks: "user.getTopTracks",
     getPersonalTags: 'user.getPersonalTags',
     getFriends: 'user.getFriends',
+    getTopAlbums: 'user.getTopAlbums',
+    getTopArtists: 'user.getTopArtists', // TODO
+    getTopTags: 'user.getTopTags', // TODO
+    getWeeklyAlbumChart: 'user.getWeeklyAlbumChart', // TODO
+    getWeeklyArtistChart: 'user.getWeeklyArtistChart', // TODO
+    getWeeklyChartList: 'user.getWeeklyChartList', // TODO
+    getWeeklyTrackChart: 'user.getWeeklyTrackChart', // TODO
   }
 } as const;
 
@@ -61,10 +68,18 @@ interface I_LastFM_handler {
   setUsername: T_setUsername;
 }
 
+// Enum(s)
+export enum E_Period {
+  Overall = "overall",
+  SevenDay = "7day",
+  OneMonth = "1month",
+  ThreeMonth = "3month",
+  SixMonth = "6month",
+  TwelveMonth = "12month"
+}
+
 // TYPES ============
 // General types
-type T_Period = "overall" | "7day" | "1month" | "3month" | "6month" | "12month";
-
 type T_Image = {
   size: string;
   "#text": string;
@@ -86,6 +101,19 @@ type T_ArtistL = {
   mbid: string;
   name: string;
   url: string;
+}
+
+type T_ArtistTotal = {
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  streamable: string;
+  url: string;
+  playcount: number | string;
+
+  "@attr": {
+    rank: number | string;
+  }
 }
 
 type T_StreamableS = {
@@ -118,11 +146,12 @@ type T_ERROR = {
   code: number;
   message: string;
 }
+
 // params type(s)
 type T_UserTopTracksParams = {
   limit: number;
   page: number;
-  period: T_Period;
+  period: E_Period;
 }
 
 type T_RecentTracksParams = {
@@ -140,6 +169,18 @@ type T_UserLovedTracksParams = {
 
 type T_UserGetFriendsParams = {
   recenttracks: boolean;
+  limit: number;
+  page: number;
+}
+
+type T_UserGetTopAlbumsParams = {
+  period: E_Period;
+  limit: number;
+  page: number;
+}
+
+type T_UserGetTopArtistsParams = {
+  period: E_Period;
   limit: number;
   page: number;
 }
@@ -188,6 +229,19 @@ type T_GoodParams = T_UserTopTracksParams;
 
 type Methods = typeof METHODS;
 type Method = Methods["user"][keyof Methods["user"]];
+
+type T_UserTopAlbumsAlbum = {
+  artist: T_ArtistM;
+  image: T_Image[];
+  mbid: string;
+  name: string;
+  playcount: number | string;
+  url: string;
+
+  "@attr": {
+    rank: number | string;
+  }
+}
 
 // response type(s)
 export type T_UserInfoRes = {
@@ -265,6 +319,20 @@ type T_UserFriendsRes = {
   }
 }
 
+type T_UserTopAlbumsRes = {
+  topalbums: {
+    album: T_UserTopAlbumsAlbum[];
+    "@attr": T_Attr;
+  };
+}
+
+type T_UserTopArtistsRes = {
+  topartists: {
+    artist: T_ArtistTotal[];
+    "@attr": T_Attr;
+  }
+}
+
 type T_ErrorRes = {
   error: T_ERROR;
 }
@@ -274,7 +342,9 @@ type T_allResponse =
   | T_UserTopTracksRes
   | T_RecentTracksRes
   | T_UserLovedTracksRes
-  | T_UserFriendsRes;
+  | T_UserFriendsRes
+  | T_UserTopAlbumsRes
+  | T_UserTopArtistsRes
 
 // Function types
 
@@ -292,9 +362,11 @@ type T_fetchData = (
 // User methods types
 type T_getUserInfo = () => Promise<T_UserInfoRes>;
 type T_getUserTopTracks = (params?: Partial<T_UserTopTracksParams>) => Promise<T_UserTopTracksRes>;
-type T_getRecentTracks = (params?: Partial<T_RecentTracksParams>) => Promise<T_RecentTracksRes>
+type T_getUserRecentTracks = (params?: Partial<T_RecentTracksParams>) => Promise<T_RecentTracksRes>
 type T_getUserLovedTracks = (params?: Partial<T_UserLovedTracksParams>) => Promise<T_UserLovedTracksRes>;
 type T_getUserFriends = (params?: Partial<T_UserGetFriendsParams>) => Promise<T_UserFriendsRes>;
+type T_getUserTopAlbums = (params?: Partial<T_UserGetTopAlbumsParams>) => Promise<T_UserTopAlbumsRes>;
+type T_getUserTopArtists = (params?: Partial<T_UserGetTopArtistsParams>) => Promise<T_UserTopArtistsRes>;
 
 type T_isNowPlaying = () => Promise<T_RecentTracksTrackAll>;
 
@@ -354,6 +426,7 @@ const castResponse = <T extends T_allResponse | T_ErrorRes>(response: T): T => {
       track.streamable["#text"] = track.streamable["#text"] === "1";
       track.duration = Number(track.duration);
       track.playcount = Number(track.playcount);
+
       track["@attr"].rank = Number(track["@attr"].rank);
     })
 
@@ -380,6 +453,32 @@ const castResponse = <T extends T_allResponse | T_ErrorRes>(response: T): T => {
       user.registered.unixtime = Number(user.registered.unixtime);
       user.subscriber = Number(user.subscriber);
     })
+
+    return response;
+  }
+
+  if ("topalbums" in response) {
+    response.topalbums.album.forEach((album) => {
+      album["@attr"].rank = Number(album["@attr"].rank);
+      album.playcount = Number(album.playcount);
+    })
+
+    response.topalbums["@attr"].page = Number(response.topalbums["@attr"].page);
+
+    return response;
+  }
+
+  if ("topartists" in response) {
+    response.topartists.artist.forEach((artist) => {
+      artist["@attr"].rank = Number(artist["@attr"].rank);
+      artist.playcount = Number(artist.playcount);
+    })
+
+    console.log(response.topartists["@attr"].page);
+
+    response.topartists["@attr"].page = Number(response.topartists["@attr"].page);
+
+
 
     return response;
   }
@@ -425,55 +524,6 @@ class LastFM_handler implements I_LastFM_handler {
     }
 
     return LastFM_handler.instance;
-  }
-
-  setUsername: T_setUsername = (username) => {
-    this.username = username;
-  }
-
-  getUsername: T_getUsername = () => {
-    return this.username;
-  }
-
-  /**
-   * @function getUserInfo
-   * @description Gets the user info.
-   *
-   * @returns {Promise<T_UserInfoRes>}
-   */
-  getUserInfo: T_getUserInfo = async () => {
-    return await this.fetchData(METHODS.user.getInfo, {}) as T_UserInfoRes;
-  }
-
-  getUserTopTracks: T_getUserTopTracks = async (params) => {
-    return await this.fetchData(METHODS.user.getTopTracks, params ?? {}) as T_UserTopTracksRes;
-  }
-
-  getRecentTracks: T_getRecentTracks = async (params) => {
-    return await this.fetchData(METHODS.user.getRecentTracks, params ?? {}) as T_RecentTracksRes;
-  }
-
-  getUserLovedTracks: T_getUserLovedTracks = async (params) => {
-    return await this.fetchData(METHODS.user.getLovedTracks, params ?? {}) as T_UserLovedTracksRes;
-  }
-
-  getUserFriends: T_getUserFriends = async (params) => {
-    return await this.fetchData(METHODS.user.getFriends, params ?? {}) as T_UserFriendsRes;
-  }
-
-  ifNowPlaying: T_isNowPlaying = async () => {
-    const track = castResponse(
-      await this.fetchData(METHODS.user.getRecentTracks, {limit: 1}) as T_RecentTracksRes
-    );
-
-    if (!track.recenttracks.track[0]) throw NoCurrentlyPlayingTrackError
-
-    // The '@attr' property is only present if the track is currently playing.
-    if (track.recenttracks.track[0]["@attr"]?.nowplaying) {
-      return track.recenttracks.track[0] as T_RecentTracksTrackAll;
-    }
-
-    throw NoCurrentlyPlayingTrackError;
   }
 
   /**
@@ -526,9 +576,83 @@ class LastFM_handler implements I_LastFM_handler {
             return
           }
 
-          reject(error);
+          reject({
+            error: -1,
+            message: `Unknown error: ${error.response.data.error} - ${error.response.data.message}`
+          });
         })
     });
+  }
+
+  setUsername: T_setUsername = (username) => {
+    this.username = username;
+  }
+
+  getUsername: T_getUsername = () => {
+    return this.username;
+  }
+
+  /**
+   * @function getUserInfo
+   * @description Gets the user info.
+   *
+   * @returns {Promise<T_UserInfoRes>}
+   */
+  getUserInfo: T_getUserInfo = async () => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getInfo, {}) as T_UserInfoRes
+    );
+  }
+
+  getUserTopTracks: T_getUserTopTracks = async (params) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getTopTracks, params ?? {}) as T_UserTopTracksRes
+    );
+  }
+
+  getUserRecentTracks: T_getUserRecentTracks = async (params) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getRecentTracks, params ?? {}) as T_RecentTracksRes
+    );
+  }
+
+  getUserLovedTracks: T_getUserLovedTracks = async (params) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getLovedTracks, params ?? {}) as T_UserLovedTracksRes
+    );
+  }
+
+  getUserFriends: T_getUserFriends = async (params) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getFriends, params ?? {}) as T_UserFriendsRes
+    );
+  }
+
+  getUserTopAlbums: T_getUserTopAlbums = async (params?: Partial<T_UserGetTopAlbumsParams>) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getTopAlbums, params ?? {}) as T_UserTopAlbumsRes
+    );
+  }
+
+  getUserTopArtists: T_getUserTopArtists = async (params?: Partial<T_UserGetTopArtistsParams>) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getTopArtists, params ?? {}) as T_UserTopArtistsRes
+    );
+  }
+
+  ifNowPlaying: T_isNowPlaying = async () => {
+    const track = castResponse(
+      await this.fetchData(METHODS.user.getRecentTracks, {limit: 1}) as T_RecentTracksRes
+    );
+
+    if (!track.recenttracks.track[0]) throw NoCurrentlyPlayingTrackError
+
+    // The '@attr' property is only present if the track is currently playing.
+    if (track.recenttracks.track[0]["@attr"]?.nowplaying) {
+      return track.recenttracks.track[0] as T_RecentTracksTrackAll;
+    }
+
+    throw NoCurrentlyPlayingTrackError;
   }
 }
 

@@ -6,10 +6,7 @@
  * @license unlicense
  */
 
-import LastFM_handler, {
-  ERROR_CODES,
-  T_UserInfoRes
-} from "../LasfFM_handler";
+import LastFM_handler, {E_Period, ERROR_CODES, T_UserInfoRes} from "../LasfFM_handler";
 
 describe("LastFM_handler Tests", () => {
   it("should return the same instance", () => {
@@ -98,7 +95,7 @@ describe("LastFM_handler Tests", () => {
     const instance = LastFM_handler.getInstance('tom_planche');
 
 
-    const response = await instance.getRecentTracks({
+    const response = await instance.getUserRecentTracks({
       page: 2,
       limit: 20,
     });
@@ -114,9 +111,6 @@ describe("LastFM_handler Tests", () => {
   //
   //   expect(response).toBeDefined();
   //   expect(response.mbid).toBeDefined();
-  //
-  //   console.log(response);
-  //   console.log(response.mbid);
   // });
 
   it("should return loved tracks (no params) ", async () => {
@@ -138,6 +132,66 @@ describe("LastFM_handler Tests", () => {
     await instance.getUserFriends().catch((err) => {
       expect(err.error).toBe(ERROR_CODES.STATUS_INVALID_PARAMS);
     })
+  });
+
+  it("should return user top albums (no params)", async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const response = await instance.getUserTopAlbums();
+
+    expect(response).toBeDefined();
+    expect(response.topalbums).toBeDefined();
+    expect(response.topalbums.album).toBeDefined();
+  });
+
+  it("should return user top albums (w/ params)", async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const page = 2;
+    const limit = 10;
+
+    const response = await instance.getUserTopAlbums({
+      page,
+      limit,
+      period: E_Period.Overall
+    });
+
+    expect(response).toBeDefined();
+    expect(response.topalbums).toBeDefined();
+    expect(response.topalbums.album).toBeDefined();
+    expect(response.topalbums.album.length).toBe(limit);
+    expect(response.topalbums["@attr"].page).toBe(+page);
+
+  });
+
+  it("should return user top artist (no params)", async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const response = await instance.getUserTopArtists();
+
+    expect(response).toBeDefined();
+    expect(response.topartists).toBeDefined();
+    expect(response.topartists.artist).toBeDefined();
+  });
+
+  it("should return user top artist (w/ params)", async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const page = 2;
+    const limit = 10;
+
+    const response = await instance.getUserTopArtists({
+      page,
+      limit,
+      period: E_Period.Overall
+    });
+
+    expect(response).toBeDefined();
+    expect(response.topartists).toBeDefined();
+    expect(response.topartists.artist).toBeDefined();
+    expect(response.topartists.artist.length).toBe(limit);
+    expect(response.topartists["@attr"].page).toBe(page);
+
   });
 });
 
