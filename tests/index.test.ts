@@ -6,7 +6,7 @@
  * @license unlicense
  */
 
-import LastFM_handler, {E_Period, ERROR_CODES, T_UserInfoRes} from "../LasfFM_handler";
+import LastFM_handler, {E_Period, LASTFM_ERROR_CODES, T_UserInfoRes} from "../LasfFM_handler";
 
 describe("LastFM_handler Tests", () => {
   it("should return the same instance", () => {
@@ -61,7 +61,7 @@ describe("LastFM_handler Tests", () => {
     const instance = LastFM_handler.getInstance("TomPlanche");
 
     await instance.getUserInfo().catch((err) => {
-      expect(err.error).toBe(ERROR_CODES.STATUS_INVALID_PARAMS);
+      expect(err.error).toBe(LASTFM_ERROR_CODES.STATUS_INVALID_PARAMS);
     });
   });
 
@@ -130,7 +130,7 @@ describe("LastFM_handler Tests", () => {
     const instance = LastFM_handler.getInstance("tom_planche");
 
     await instance.getUserFriends().catch((err) => {
-      expect(err.error).toBe(ERROR_CODES.STATUS_INVALID_PARAMS);
+      expect(err.error).toBe(LASTFM_ERROR_CODES.STATUS_INVALID_PARAMS);
     })
   });
 
@@ -191,7 +191,115 @@ describe("LastFM_handler Tests", () => {
     expect(response.topartists.artist).toBeDefined();
     expect(response.topartists.artist.length).toBe(limit);
     expect(response.topartists["@attr"].page).toBe(page);
+  });
 
+  it("should return user weekly album chart (no params)", async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const response = await instance.getUserWeeklyAlbumChart();
+
+    expect(response).toBeDefined();
+    expect(response.weeklyalbumchart).toBeDefined();
+    expect(response.weeklyalbumchart.album).toBeDefined();
+  });
+
+  it('should return user weekly album chart (w/ params)', async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const from = Math.floor(new Date("2021-01-01").getTime() / 1000);
+
+    const response = await instance.getUserWeeklyAlbumChart({
+      from
+    });
+
+    expect(response).toBeDefined();
+    expect(response.weeklyalbumchart).toBeDefined();
+    expect(response.weeklyalbumchart.album).toBeDefined();
+  });
+
+  it("should return user weekly artist chart (no params)", async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const response = await instance.getUserWeeklyArtistChart();
+
+    expect(response).toBeDefined();
+    expect(response.weeklyartistchart).toBeDefined();
+    expect(response.weeklyartistchart.artist).toBeDefined();
+  });
+
+  it('should return user weekly album chart (w/ params)', async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const from = Math.floor(new Date("2021-01-01").getTime() / 1000);
+
+    const response = await instance.getUserWeeklyArtistChart({
+      from
+    });
+
+    expect(response).toBeDefined();
+    expect(response.weeklyartistchart).toBeDefined();
+    expect(response.weeklyartistchart.artist).toBeDefined();
+  });
+
+  it('should return user weekly chart list - no params func', async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const response = await instance.getUserWeeklyChartList();
+
+    expect(response).toBeDefined();
+    expect(response.weeklychartlist).toBeDefined();
+    expect(response.weeklychartlist.chart).toBeDefined();
+  });
+
+  it('should return user weekly track chart (no params)', async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const response = await instance.getUserWeeklyTrackChart();
+
+    expect(response).toBeDefined();
+    expect(response.weeklytrackchart).toBeDefined();
+    expect(response.weeklytrackchart.track).toBeDefined();
+  })
+
+  it('should return user weekly track chart (w/ params)', async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const from = Math.floor(new Date("2021-01-01").getTime() / 1000);
+
+    const response = await instance.getUserWeeklyTrackChart({
+      from
+    });
+
+    expect(response).toBeDefined();
+    expect(response.weeklytrackchart).toBeDefined();
+    expect(response.weeklytrackchart.track).toBeDefined();
+  });
+
+  it('should return user top tags (no params)', async () => {
+    const instance = LastFM_handler.getInstance("tom_planche");
+
+    const response = await instance.getUserTopTags();
+
+    expect(response).toBeDefined();
+    expect(response.toptags).toBeDefined();
+    expect(response.toptags.tag).toBeDefined();
+  });
+
+  it('should return user top tags (no params)', async () => {
+    const instance = LastFM_handler.getInstance();
+
+    instance.setUsername("rj");
+
+    const response = await instance.getUserTopTags({
+      limit: 10,
+    });
+
+    console.log(response);
+
+    expect(response).toBeDefined();
+    expect(response.toptags).toBeDefined();
+    expect(response.toptags.tag).toBeDefined();
+    expect(response.toptags.tag.length).toBe(10);
   });
 });
 

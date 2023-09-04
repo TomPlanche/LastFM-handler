@@ -10,7 +10,7 @@ import axios from 'axios';
 // END IMPORTS ==========================================================================================   END IMPORTS
 
 // VARIABLES ================================================================================================ VARIABLES
-export const ERROR_CODES = {
+export const LASTFM_ERROR_CODES = {
   // 1 : This error does not exist
   STATUS_INVALID_SERVICE: 2,
   STATUS_INVALID_METHOD: 3,
@@ -49,12 +49,12 @@ export const METHODS = {
     getPersonalTags: 'user.getPersonalTags',
     getFriends: 'user.getFriends',
     getTopAlbums: 'user.getTopAlbums',
-    getTopArtists: 'user.getTopArtists', // TODO
+    getTopArtists: 'user.getTopArtists',
     getTopTags: 'user.getTopTags', // TODO
-    getWeeklyAlbumChart: 'user.getWeeklyAlbumChart', // TODO
-    getWeeklyArtistChart: 'user.getWeeklyArtistChart', // TODO
-    getWeeklyChartList: 'user.getWeeklyChartList', // TODO
-    getWeeklyTrackChart: 'user.getWeeklyTrackChart', // TODO
+    getWeeklyAlbumChart: 'user.getWeeklyAlbumChart',
+    getWeeklyArtistChart: 'user.getWeeklyArtistChart',
+    getWeeklyChartList: 'user.getWeeklyChartList',
+    getWeeklyTrackChart: 'user.getWeeklyTrackChart',
   }
 } as const;
 
@@ -142,6 +142,24 @@ type T_RegistredL = {
   "#text": Date;
 }
 
+type T_WeelyXChartAttr = {
+  from: number; // UNIX timestamp
+  to: number; // UNIX timestamp
+  user: string;
+}
+
+type T_Chart = {
+  "#text": string;
+  from: number; // UNIX timestamp
+  to: number; // UNIX timestamp
+}
+
+type T_Tag = {
+  name: string;
+  count: number | string;
+  url: string;
+}
+
 type T_ERROR = {
   code: number;
   message: string;
@@ -185,6 +203,15 @@ type T_UserGetTopArtistsParams = {
   page: number;
 }
 
+type T_UserWeeklyXChartParams = {
+  from: number; // UNIX timestamp
+  to: number;
+}
+
+type T_UserGetTopTagsParams = {
+  limit: number;
+}
+
 // track type(s)
 type T_UserTopTracksTrack = {
   artist: T_ArtistM;
@@ -225,7 +252,16 @@ type T_RecentTracksTrackExtended = T_RecentTracksTrack & {
 
 type T_RecentTracksTrackAll = T_RecentTracksTrack | T_RecentTracksTrackExtended;
 
-type T_GoodParams = T_UserTopTracksParams;
+type T_GoodParams =
+  T_UserTopTracksParams
+  | T_RecentTracksParams
+  | T_UserLovedTracksParams
+  | T_UserGetFriendsParams
+  | T_UserGetTopAlbumsParams
+  | T_UserGetTopArtistsParams
+  | T_UserWeeklyXChartParams
+  | T_UserGetTopTagsParams;
+
 
 type Methods = typeof METHODS;
 type Method = Methods["user"][keyof Methods["user"]];
@@ -333,6 +369,45 @@ type T_UserTopArtistsRes = {
   }
 }
 
+type T_UserWeeklyAlbumChartRes = {
+  weeklyalbumchart: {
+    album: T_UserTopAlbumsAlbum[];
+    "@attr": T_WeelyXChartAttr;
+  }
+}
+
+type T_UserWeeklyArtistChartRes = {
+  weeklyartistchart: {
+    artist: T_ArtistTotal[];
+    "@attr": T_WeelyXChartAttr;
+  }
+}
+
+type T_UserWeeklyChartRes = {
+  weeklychartlist: {
+    chart: T_Chart[];
+    "@attr": {
+      user: string;
+    }
+  }
+}
+
+type T_UserWeeklyTrackChartRes = {
+  weeklytrackchart: {
+    track: T_UserTopAlbumsAlbum[];
+    "@attr": T_WeelyXChartAttr;
+  }
+}
+
+type T_UserGetTopTagsRes = {
+  toptags: {
+    tag: T_Tag[];
+    "@attr": {
+      user: string;
+    }
+  }
+}
+
 type T_ErrorRes = {
   error: T_ERROR;
 }
@@ -345,6 +420,11 @@ type T_allResponse =
   | T_UserFriendsRes
   | T_UserTopAlbumsRes
   | T_UserTopArtistsRes
+  | T_UserWeeklyAlbumChartRes
+  | T_UserWeeklyArtistChartRes
+  | T_UserWeeklyChartRes
+  | T_UserWeeklyTrackChartRes
+  | T_UserGetTopTagsRes
 
 // Function types
 
@@ -367,9 +447,23 @@ type T_getUserLovedTracks = (params?: Partial<T_UserLovedTracksParams>) => Promi
 type T_getUserFriends = (params?: Partial<T_UserGetFriendsParams>) => Promise<T_UserFriendsRes>;
 type T_getUserTopAlbums = (params?: Partial<T_UserGetTopAlbumsParams>) => Promise<T_UserTopAlbumsRes>;
 type T_getUserTopArtists = (params?: Partial<T_UserGetTopArtistsParams>) => Promise<T_UserTopArtistsRes>;
+type T_getUserWeeklyAlbumChart = (params?: Partial<T_UserWeeklyXChartParams>) => Promise<T_UserWeeklyAlbumChartRes>;
+type T_getUserWeeklyArtistChart = (params?: Partial<T_UserWeeklyXChartParams>) => Promise<T_UserWeeklyArtistChartRes>;
+type T_getUserWeeklyChartList = () => Promise<T_UserWeeklyChartRes>;
+type T_getUserWeeklyTrackChart = (params?: Partial<T_UserWeeklyXChartParams>) => Promise<T_UserWeeklyTrackChartRes>;
+type T_getUserTopTags = (params?: Partial<T_UserGetTopTagsParams>) => Promise<T_UserGetTopTagsRes>;
 
 type T_isNowPlaying = () => Promise<T_RecentTracksTrackAll>;
 
+// other types
+type T_ResponseItem = {
+  "@attr": {
+    rank: number | string;
+  },
+  playcount: number | string;
+};
+
+type T_parseResponseItems = (items: T_ResponseItem[]) => void;
 // error class(es)
 export class UsernameNotFoundError extends Error {
   constructor(username: string) {
@@ -386,6 +480,21 @@ export class NoCurrentlyPlayingTrackError extends Error {
 // END VARIABLES ======================================================================================= END VARIABLES
 
 // FUNCTIONS ================================================================================================ FUNCTIONS
+const parseResponseItems: T_parseResponseItems = (items) => {
+  items.forEach((item) => {
+    item["@attr"].rank = Number(item["@attr"].rank);
+    item.playcount = Number(item.playcount);
+  });
+}
+
+const parseResponseAttr = (attr: {
+  from: string | number;
+  to: string | number;
+}) => {
+  attr.from = Number(attr.from);
+  attr.to = Number(attr.to);
+}
+
 /**
  * @function castResponse
  * @description Casts the response to the correct type. The API returns types in string, so we need to cast them.
@@ -395,10 +504,10 @@ export class NoCurrentlyPlayingTrackError extends Error {
  */
 const castResponse = <T extends T_allResponse | T_ErrorRes>(response: T): T => {
   if ("error" in response) {
-    const errorName = Object.keys(ERROR_CODES).find((key) => {
-      const finalKey = key as keyof typeof ERROR_CODES;
+    const errorName = Object.keys(LASTFM_ERROR_CODES).find((key) => {
+      const finalKey = key as keyof typeof LASTFM_ERROR_CODES;
 
-      return ERROR_CODES[finalKey] === Number(response.error);
+      return LASTFM_ERROR_CODES[finalKey] === Number(response.error);
     });
 
     const finalResponse = response as T_ErrorRes;
@@ -474,11 +583,44 @@ const castResponse = <T extends T_allResponse | T_ErrorRes>(response: T): T => {
       artist.playcount = Number(artist.playcount);
     })
 
-    console.log(response.topartists["@attr"].page);
-
     response.topartists["@attr"].page = Number(response.topartists["@attr"].page);
 
+    return response;
+  }
 
+  if (
+    "weeklyalbumchart" in response
+    || "weeklyartistchart" in response
+    || "weeklytrackchart" in response
+  ) {
+    if ("weeklyalbumchart" in response) {
+      parseResponseItems(response.weeklyalbumchart.album)
+      parseResponseAttr(response.weeklyalbumchart["@attr"])
+    } else if ("weeklyartistchart" in response) {
+      parseResponseItems(response.weeklyartistchart.artist)
+      parseResponseAttr(response.weeklyartistchart["@attr"])
+    } else if ("weeklytrackchart" in response) {
+      parseResponseItems(response.weeklytrackchart.track)
+      parseResponseAttr(response.weeklytrackchart["@attr"])
+    }
+
+    return response;
+
+  }
+
+  if ("weeklychartlist" in response) {
+    response.weeklychartlist.chart.forEach((chart) => {
+      chart.from = Number(chart.from);
+      chart.to = Number(chart.to);
+    })
+
+    return response;
+  }
+
+  if ("toptags" in response) {
+    response.toptags.tag.forEach((tag) => {
+      tag.count = Number(tag.count);
+    })
 
     return response;
   }
@@ -520,7 +662,7 @@ class LastFM_handler implements I_LastFM_handler {
    */
   static getInstance: T_getInstance = (username) => {
     if (!LastFM_handler.instance) {
-      LastFM_handler.instance = new LastFM_handler(username);
+      LastFM_handler.instance = new LastFM_handler(username ?? 'RJ');
     }
 
     return LastFM_handler.instance;
@@ -561,10 +703,10 @@ class LastFM_handler implements I_LastFM_handler {
             return
           }
 
-          const errorName = Object.keys(ERROR_CODES).find((key) => {
-            const finalKey = key as keyof typeof ERROR_CODES;
+          const errorName = Object.keys(LASTFM_ERROR_CODES).find((key) => {
+            const finalKey = key as keyof typeof LASTFM_ERROR_CODES;
 
-            return ERROR_CODES[finalKey] === Number(error.response.data.error);
+            return LASTFM_ERROR_CODES[finalKey] === Number(error.response.data.error);
           });
 
           if (errorName) {
@@ -637,6 +779,36 @@ class LastFM_handler implements I_LastFM_handler {
   getUserTopArtists: T_getUserTopArtists = async (params?: Partial<T_UserGetTopArtistsParams>) => {
     return castResponse(
       await this.fetchData(METHODS.user.getTopArtists, params ?? {}) as T_UserTopArtistsRes
+    );
+  }
+
+  getUserWeeklyAlbumChart: T_getUserWeeklyAlbumChart = async (params?: Partial<T_UserWeeklyXChartParams>) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getWeeklyAlbumChart, params ?? {}) as T_UserWeeklyAlbumChartRes
+    );
+  }
+
+  getUserWeeklyArtistChart: T_getUserWeeklyArtistChart = async (params?: Partial<T_UserWeeklyXChartParams>) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getWeeklyArtistChart, params ?? {}) as T_UserWeeklyArtistChartRes
+    );
+  }
+
+  getUserWeeklyChartList: T_getUserWeeklyChartList = async () => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getWeeklyChartList, {}) as T_UserWeeklyChartRes
+    );
+  }
+
+  getUserWeeklyTrackChart: T_getUserWeeklyTrackChart = async (params?: Partial<T_UserWeeklyXChartParams>) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getWeeklyTrackChart, params ?? {}) as T_UserWeeklyTrackChartRes
+    );
+  }
+
+  getUserTopTags: T_getUserTopTags = async (params) => {
+    return castResponse(
+      await this.fetchData(METHODS.user.getTopTags, params ?? {}) as T_UserGetTopTagsRes
     );
   }
 
