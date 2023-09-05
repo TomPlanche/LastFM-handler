@@ -50,7 +50,7 @@ export const METHODS = {
     getFriends: 'user.getFriends',
     getTopAlbums: 'user.getTopAlbums',
     getTopArtists: 'user.getTopArtists',
-    getTopTags: 'user.getTopTags', // TODO
+    getTopTags: 'user.getTopTags',
     getWeeklyAlbumChart: 'user.getWeeklyAlbumChart',
     getWeeklyArtistChart: 'user.getWeeklyArtistChart',
     getWeeklyChartList: 'user.getWeeklyChartList',
@@ -663,6 +663,10 @@ class LastFM_handler implements I_LastFM_handler {
   static getInstance: T_getInstance = (username) => {
     if (!LastFM_handler.instance) {
       LastFM_handler.instance = new LastFM_handler(username ?? 'RJ');
+    }
+
+    if (username) {
+      LastFM_handler.instance.setUsername(username);
     }
 
     return LastFM_handler.instance;
