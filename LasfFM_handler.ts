@@ -730,11 +730,24 @@ class LastFM_handler implements I_LastFM_handler {
     });
   }
 
-  setUsername: T_setUsername = (username) => {
+  /**
+   * @function setUsername
+   * @description Sets the username.
+   *
+   * @param username {string} The username to set.
+   * @returns {void}
+   */
+  setUsername: T_setUsername = (username: string): void => {
     this.username = username;
   }
 
-  getUsername: T_getUsername = () => {
+  /**
+   * @function getUsername
+   * @description Gets the username.
+   *
+   * @returns {string} The username.
+   */
+  getUsername: T_getUsername = (): string => {
     return this.username;
   }
 
@@ -744,79 +757,181 @@ class LastFM_handler implements I_LastFM_handler {
    *
    * @returns {Promise<T_UserInfoRes>}
    */
-  getUserInfo: T_getUserInfo = async () => {
+  getUserInfo: T_getUserInfo = async (): Promise<T_UserInfoRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getInfo, {}) as T_UserInfoRes
     );
   }
 
-  getUserTopTracks: T_getUserTopTracks = async (params) => {
+  /**
+   * @function getUserTopTracks
+   * @description Gets the user top tracks.
+   *
+   * @param params {Partial<T_UserTopTracksParams>} The params to use.
+   * @returns {Promise<T_UserTopTracksRes>}
+   */
+  getUserTopTracks: T_getUserTopTracks = async (
+    params?: Partial<T_UserTopTracksParams>
+  ): Promise<T_UserTopTracksRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getTopTracks, params ?? {}) as T_UserTopTracksRes
     );
   }
 
-  getUserRecentTracks: T_getUserRecentTracks = async (params) => {
+  /**
+   * @function getUserRecentTracks
+   * @description Gets the user recent tracks.
+   *
+   * @param params {Partial<T_RecentTracksParams>} The params to use.
+   * @returns {Promise<T_RecentTracksRes>}
+   */
+  getUserRecentTracks: T_getUserRecentTracks = async (
+    params?: Partial<T_RecentTracksParams>
+  ): Promise<T_RecentTracksRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getRecentTracks, params ?? {}) as T_RecentTracksRes
     );
   }
 
-  getUserLovedTracks: T_getUserLovedTracks = async (params) => {
+  /**
+   * @function getUserLovedTracks
+   * @description Gets the user loved tracks.
+   *
+   * @param params {Partial<T_UserLovedTracksParams>} The params to use.
+   * @returns {Promise<T_UserLovedTracksRes>}
+   */
+  getUserLovedTracks: T_getUserLovedTracks = async (
+    params?: Partial<T_UserLovedTracksParams>
+  ): Promise<T_UserLovedTracksRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getLovedTracks, params ?? {}) as T_UserLovedTracksRes
     );
   }
 
-  getUserFriends: T_getUserFriends = async (params) => {
+  /**
+   * @function getUserFriends
+   * @description Gets the user friends.
+   *
+   * @param params {Partial<T_UserGetFriendsParams>} The params to use.
+   * @returns {Promise<T_UserFriendsRes>}
+   */
+  getUserFriends: T_getUserFriends = async (
+    params?: Partial<T_UserGetFriendsParams>
+  ): Promise<T_UserFriendsRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getFriends, params ?? {}) as T_UserFriendsRes
     );
   }
 
-  getUserTopAlbums: T_getUserTopAlbums = async (params?: Partial<T_UserGetTopAlbumsParams>) => {
+  /**
+   * @function getUserTopAlbums
+   * @description Gets the user top albums.
+   *
+   * @param params {Partial<T_UserGetTopAlbumsParams>} The params to use.
+   * @returns {Promise<T_UserTopAlbumsRes>}
+   */
+  getUserTopAlbums: T_getUserTopAlbums = async (
+    params?: Partial<T_UserGetTopAlbumsParams>
+  ): Promise<T_UserTopAlbumsRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getTopAlbums, params ?? {}) as T_UserTopAlbumsRes
     );
   }
 
-  getUserTopArtists: T_getUserTopArtists = async (params?: Partial<T_UserGetTopArtistsParams>) => {
+  /**
+   * @function getUserTopArtists
+   * @description Gets the user top artists.
+   *
+   * @param params {Partial<T_UserGetTopArtistsParams>} The params to use.
+   * @returns {Promise<T_UserTopArtistsRes>}
+   */
+  getUserTopArtists: T_getUserTopArtists = async (
+    params?: Partial<T_UserGetTopArtistsParams>
+  ): Promise<T_UserTopArtistsRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getTopArtists, params ?? {}) as T_UserTopArtistsRes
     );
   }
 
-  getUserWeeklyAlbumChart: T_getUserWeeklyAlbumChart = async (params?: Partial<T_UserWeeklyXChartParams>) => {
+  /**
+   * @function getUserWeeklyAlbumChart
+   * @description Gets the user weekly album chart.
+   *
+   * @param params {Partial<T_UserWeeklyXChartParams>} The params to use.
+   * @returns {Promise<T_UserWeeklyAlbumChartRes>}
+   */
+  getUserWeeklyAlbumChart: T_getUserWeeklyAlbumChart = async (
+    params?: Partial<T_UserWeeklyXChartParams>
+  ): Promise<T_UserWeeklyAlbumChartRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getWeeklyAlbumChart, params ?? {}) as T_UserWeeklyAlbumChartRes
     );
   }
 
-  getUserWeeklyArtistChart: T_getUserWeeklyArtistChart = async (params?: Partial<T_UserWeeklyXChartParams>) => {
+  /**
+   * @function getUserWeeklyArtistChart
+   * @description Gets the user weekly artist chart.
+   *
+   * @param params {Partial<T_UserWeeklyXChartParams>} The params to use.
+   * @returns {Promise<T_UserWeeklyArtistChartRes>}
+   */
+  getUserWeeklyArtistChart: T_getUserWeeklyArtistChart = async (
+    params?: Partial<T_UserWeeklyXChartParams>
+  ): Promise<T_UserWeeklyArtistChartRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getWeeklyArtistChart, params ?? {}) as T_UserWeeklyArtistChartRes
     );
   }
 
-  getUserWeeklyChartList: T_getUserWeeklyChartList = async () => {
+  /**
+   * @function getUserWeeklyChartList
+   * @description Gets the user weekly chart list.
+   *
+   * @returns {Promise<T_UserWeeklyChartRes>}
+   */
+  getUserWeeklyChartList: T_getUserWeeklyChartList = async (): Promise<T_UserWeeklyChartRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getWeeklyChartList, {}) as T_UserWeeklyChartRes
     );
   }
 
-  getUserWeeklyTrackChart: T_getUserWeeklyTrackChart = async (params?: Partial<T_UserWeeklyXChartParams>) => {
+  /**
+   * @function getUserWeeklyTrackChart
+   * @description Gets the user weekly track chart.
+   *
+   * @param params {Partial<T_UserWeeklyXChartParams>} The params to use.
+   * @returns {Promise<T_UserWeeklyTrackChartRes>}
+   */
+  getUserWeeklyTrackChart: T_getUserWeeklyTrackChart = async (
+    params?: Partial<T_UserWeeklyXChartParams>
+  ): Promise<T_UserWeeklyTrackChartRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getWeeklyTrackChart, params ?? {}) as T_UserWeeklyTrackChartRes
     );
   }
 
-  getUserTopTags: T_getUserTopTags = async (params) => {
+  /**
+   * @function getUserTopTags
+   * @description Gets the user top tags.
+   *
+   * @param params {Partial<T_UserGetTopTagsParams>} The params to use.
+   * @returns {Promise<T_UserGetTopTagsRes>}
+   */
+  getUserTopTags: T_getUserTopTags = async (
+    params?: Partial<T_UserGetTopTagsParams>
+  ): Promise<T_UserGetTopTagsRes> => {
     return castResponse(
       await this.fetchData(METHODS.user.getTopTags, params ?? {}) as T_UserGetTopTagsRes
     );
   }
 
-  ifNowPlaying: T_isNowPlaying = async () => {
+  /**
+   * @function ifNowPlaying
+   * @description Checks if the user is currently playing a track.
+   *
+   * @returns {Promise<T_RecentTracksTrackAll>}
+   */
+  ifNowPlaying: T_isNowPlaying = async (): Promise<T_RecentTracksTrackAll> => {
     const track = castResponse(
       await this.fetchData(METHODS.user.getRecentTracks, {limit: 1}) as T_RecentTracksRes
     );
