@@ -645,7 +645,7 @@ const castResponse = <T extends T_allResponse | T_ErrorRes>(response: T): T => {
 class LastFM_handler implements I_LastFM_handler {
   static instance: LastFM_handler;
 
-  readonly baseURL: string = "http://ws.audioscrobbler.com/2.0/";
+  readonly baseURL: string = "https://ws.audioscrobbler.com/2.0/";
   readonly endURL: string = `&api_key=${LAST_FM_API_KEY}&format=json`;
 
   username = "LASTFM_USERNAME";

@@ -286,9 +286,8 @@ describe("LastFM_handler Tests", () => {
   });
 
   it('should return user top tags (no params)', async () => {
-    const instance = LastFM_handler.getInstance();
+    const instance = LastFM_handler.getInstance("rj");
 
-    instance.setUsername("rj");
 
     const response = await instance.getUserTopTags({
       limit: 10,
