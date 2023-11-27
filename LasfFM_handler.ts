@@ -5,8 +5,10 @@
  */
 
 // IMPORTS ===================================================================================================  IMPORTS
-import {LAST_FM_API_KEY} from "./secrets";
 import axios from 'axios';
+import {
+  LAST_FM_API_KEY
+} from "./secrets";
 // END IMPORTS ==========================================================================================   END IMPORTS
 
 // VARIABLES ================================================================================================ VARIABLES
@@ -281,23 +283,25 @@ type T_UserTopAlbumsAlbum = {
 
 // response type(s)
 export type T_UserInfoRes = {
-  age: number;
-  album_count: number | string;
-  artist_count: number | string;
-  bootstrap: boolean | string;
-  country: string;
-  gender: string;
-  id: string;
-  image: string;
-  name: string;
-  playcount: number | string;
-  playlists: number | string;
-  realname: string;
-  registered: T_RegistredS
-  subscriber: number | string;
-  track_count: number | string;
-  type: string;
-  url: string;
+  user: {
+    age: number;
+    album_count: number | string;
+    artist_count: number | string;
+    bootstrap: boolean | string;
+    country: string;
+    gender: string;
+    id: string;
+    image: string;
+    name: string;
+    playcount: number | string;
+    playlists: number | string;
+    realname: string;
+    registered: T_RegistredS
+    subscriber: boolean | string;
+    track_count: number | string;
+    type: string;
+    url: string;
+  }
 }
 
 type T_RecentTracksRes = {
@@ -343,7 +347,7 @@ type T_UserFriendsUser = {
   playcount: number | string;
   registered: T_RegistredL
   realname: string;
-  subscriber: number | string;
+  subscriber: boolean | string;
   type: string;
   url: string;
 }
@@ -560,7 +564,7 @@ const castResponse = <T extends T_allResponse | T_ErrorRes>(response: T): T => {
       user.playlists = Number(user.playlists);
       user.playcount = Number(user.playcount);
       user.registered.unixtime = Number(user.registered.unixtime);
-      user.subscriber = Number(user.subscriber);
+      user.subscriber = user.subscriber === "1";
     })
 
     return response;
@@ -625,14 +629,21 @@ const castResponse = <T extends T_allResponse | T_ErrorRes>(response: T): T => {
     return response;
   }
 
-  response.age = Number(response.age);
-  response.album_count = Number(response.album_count);
-  response.artist_count = Number(response.artist_count);
-  response.bootstrap = response.bootstrap === "1";
-  response.playcount = Number(response.playcount);
-  response.playlists = Number(response.playlists);
-  response.subscriber = Number(response.subscriber);
-  response.track_count = Number(response.track_count);
+  // else its a user info response
+  const user = response.user as T_UserInfoRes["user"];
+
+  user.age = Number(user.age);
+  user.album_count = Number(user.album_count);
+  user.artist_count = Number(user.artist_count);
+  user.bootstrap = user.bootstrap === "1";
+  user.playcount = Number(user.playcount);
+  user.playlists = Number(user.playlists);
+  user.registered.unixtime = Number(user.registered.unixtime);
+  user.subscriber = user.subscriber === "1";
+  user.track_count = Number(user.track_count);
+
+
+  response.user = user;
 
   return response;
 }
@@ -677,9 +688,11 @@ class LastFM_handler implements I_LastFM_handler {
    * @description Fetches data from the LastFM API.
    *
    * @param method {Method} The method to call.
-   * @param params
+   * @param params {T_GoodParams} The params to use.
+   *
+   * @returns {Promise<T_allResponse | T_ErrorRes>}
    */
-  private fetchData: T_fetchData = async (method, params) => {
+  private fetchData: T_fetchData = async (method: Method, params: Partial<T_GoodParams>): Promise<T_allResponse | T_ErrorRes> => {
     const paramsString = Object.keys(params).map((key) => {
       const
         finalKey = key as keyof T_GoodParams,
