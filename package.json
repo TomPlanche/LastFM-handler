@@ -1,24 +1,24 @@
 {
-  "name": "lastfm_handler",
-  "version": "1.0.0",
-  "description": "LastFM API handler using Typescript.",
-  "main": "LasfFM_handler.js",
-  "scripts": {
-    "test": "jest"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@biomejs/biome": "1.8.3",
-    "@types/jest": "^29.5.1",
-    "axios": "^1.4.0",
-    "bun-types": "latest",
-    "jest": "^29.5.0",
-    "ts-jest": "^29.1.0",
-    "typescript": "^5.1.3"
-  },
-  "dependencies": {
-    "zod": "^3.23.8"
-  }
+	"name": "lastfm_handler",
+	"version": "1.0.0",
+	"description": "LastFM API handler using Typescript.",
+	"main": "LasfFM_handler.js",
+	"scripts": {
+		"test": "jest"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@biomejs/biome": "1.8.3",
+		"@types/jest": "^29.5.1",
+		"axios": "^1.4.0",
+		"bun-types": "latest",
+		"jest": "^29.5.0",
+		"ts-jest": "^29.1.0",
+		"typescript": "^5.1.3"
+	},
+	"dependencies": {
+		"zod": "^3.23.8"
+	}
 }

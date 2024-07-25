@@ -144,7 +144,7 @@ class LastFMHandler {
 		to?: number;
 		extended?: boolean;
 		debug?: boolean;
-	} = {}): Promise<TRecentTrack[] | TRecentTrackExtended[]> {
+	} = {}): Promise<TRecentTrack[]> {
 		const goodPassedLimit = limit || API_MAX_LIMIT;
 		const finalLimit =
 			goodPassedLimit > API_MAX_LIMIT ? API_MAX_LIMIT : goodPassedLimit;
@@ -229,7 +229,7 @@ class LastFMHandler {
 		to?: number;
 		extended?: boolean;
 		debug?: boolean;
-	} = {}): Promise<TRecentTrack[] | TRecentTrackExtended[]> {
+	} = {}): Promise<TRecentTrack[]> {
 		const { goodPassedLimit, finalLimit } = this.getGoodPassedLimit(limit);
 
 		debug && console.log("from, to, extended", from, to, extended);
