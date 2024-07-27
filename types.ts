@@ -13,38 +13,82 @@ export type TMethods = z.infer<typeof MethodsSchema>;
  */
 
 const BaseOptionsSchema = z.object({
-	limit: z.coerce.number().min(1).max(1000),
-	page: z.coerce.number().min(1),
+	limit: z.coerce.number().min(1).optional(),
 });
 
 export const getRecentTracksOptionsSchema = BaseOptionsSchema.extend({
 	from: z.coerce
 		.date()
-		.transform((d) => d.getTime())
+		.transform((date) => date.getTime())
 		.optional(),
 	to: z.coerce
 		.date()
-		.transform((d) => d.getTime())
+		.transform((date) => date.getTime())
 		.optional(),
-	extended: z.coerce.number().pipe(z.coerce.boolean()).optional(),
+	extended: z
+		.string()
+		.transform((value) => {
+			if (value === "true" || value === "1") {
+				return true;
+			}
+
+			if (value === "false" || value === "0") {
+				return false;
+			}
+
+			throw new Error("Invalid boolean value");
+		})
+		.or(z.coerce.boolean())
+		.optional(),
 });
 
-const PeriodSchema = z.enum([
-	"overall",
-	"7day",
-	"1month",
-	"3month",
-	"6month",
-	"12month",
-]);
+export type TGetRecentTracksOptions = z.infer<
+	typeof getRecentTracksOptionsSchema
+>;
 
-export type TPeriod = z.infer<typeof PeriodSchema>;
+export const getAllRecentTracksOptionsSchema =
+	getRecentTracksOptionsSchema.extend({
+		page: z.coerce.number().min(1).optional(),
+	});
 
-export const getTopTracksOptionsSchema = BaseOptionsSchema.extend({
-	period: PeriodSchema.optional(),
+export type TGetAllRecentTracksOptions = z.infer<
+	typeof getAllRecentTracksOptionsSchema
+>;
+
+export const getAllTopTracksOptionsSchema = BaseOptionsSchema.extend({
+	period: z
+		.enum(["overall", "7day", "1month", "3month", "6month", "12month"])
+		.optional(),
+});
+export type TGetAllTopTracksOptions = z.infer<
+	typeof getAllTopTracksOptionsSchema
+>;
+
+export const getTopTracksOptionsSchema = getAllTopTracksOptionsSchema.extend({
+	page: z.coerce.number().min(1).optional(),
 });
 
-export type TBaseOptions = z.infer<typeof BaseOptionsSchema>;
+export type TGetTopTracksOptions = z.infer<typeof getTopTracksOptionsSchema>;
+/**
+ * The base options schema for all the methods
+ *
+ * limit: The number of items to return per page (mandatory)
+ *
+ * // GROUP 1
+ * from: The date from which to start fetching the data
+ * to: The date to which to fetch the data
+ * extended: Whether to fetch extended data or not
+ *
+ * // GROUP 2
+ * period: The period for which to fetch the data
+ *
+ * The groups are mutually exclusive
+ */
+export const getAllOptionsSchema = BaseOptionsSchema.extend({
+	limit: z.coerce.number().min(1).optional().default(100),
+}).and(getAllRecentTracksOptionsSchema.or(getAllTopTracksOptionsSchema));
+
+export type TGetAllOptions = z.infer<typeof getAllOptionsSchema>;
 
 export const BaseResponseSchema = z.object({
 	user: z.string(),
@@ -154,9 +198,13 @@ export const getRecentTracksSchema = z.object({
 	}),
 });
 
+export type TGetRecentTracksResponse = z.infer<typeof getRecentTracksSchema>;
+
 export const getTopTracksSchema = z.object({
 	toptracks: z.object({
 		track: z.array(TopTrackSchema),
 		"@attr": BaseResponseSchema,
 	}),
 });
+
+export type TGetTopTracksResponse = z.infer<typeof getTopTracksSchema>;

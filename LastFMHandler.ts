@@ -6,6 +6,7 @@
  * Get ALL the:
  * - [x] Loved tracks
  * - [x] Recent tracks
+ * - [x] Top tracks
  *
  * When no limit is passed, the middleware will fetch all the tracks.
  * Since the LastFM API has a limit of 1000 tracks per request, the middleware will make multiple requests to fetch all the tracks.
@@ -15,22 +16,29 @@
  * so I'm going with 5000 tracks to be safe.
  *
  * ## TODO:
- * - [ ] Refactor the functions that fetches ALL the tracks since they use the same logic..
+ * - [ ] Add methods:
+ *   - [ ] Get (not all) loved tracks
+ *   - [ ] Get (not all) recent tracks
+ *   - [ ] Get (not all) top tracks
  *
  */
 
 import axios from "axios";
 import { z } from "zod";
 import {
-	type TBaseOptions,
+	type TGetAllOptions,
+	type TGetAllRecentTracksOptions,
+	type TGetAllTopTracksOptions,
+	type TGetRecentTracksResponse,
+	type TGetTopTracksResponse,
 	type TLovedTrack,
 	type TMethods,
-	type TPeriod,
 	type TRecentTrack,
 	type TTopTrack,
-	getRecentTracksOptionsSchema,
+	getAllOptionsSchema,
+	getAllRecentTracksOptionsSchema,
+	getAllTopTracksOptionsSchema,
 	getRecentTracksSchema,
-	getTopTracksOptionsSchema,
 	getTopTracksSchema,
 	getUserLovedTracksSchema,
 } from "./types";
@@ -48,7 +56,7 @@ class LastFMHandler {
 
 	readonly username: string;
 
-	private readonly baseOptions: TBaseOptions = {
+	private readonly baseOptions: TGetAllOptions = {
 		limit: 1000,
 		page: 1,
 	};
@@ -124,255 +132,71 @@ class LastFMHandler {
 	/**
 	 * Get the recent tracks of the user
 	 *
-	 * @param {object} params - The parameters to pass to the LastFM API
-	 * @param {number} params.limit - The limit of tracks to fetch
-	 * @param {number} params.from - The timestamp to fetch from
-	 * @param {number} params.to - The timestamp to fetch to
-	 * @param {boolean} params.extended - Should the function fetch extended information (default: false)
-	 *
-	 * @param {boolean} params.debug - Should the function log debug information (default: false)
+	 * @param {TGetAllRecentTracksOptions} params - The parameters to pass to the LastFM API
+	 * @param {boolean} debug - Should the function log debug information (default: false)
 	 *
 	 * @returns {Promise<TRecentTrack[]} The recent tracks of the user
 	 */
-	async getAllUserRecentTracks({
-		limit,
-		extended,
-		debug,
-	}: {
-		limit?: number;
-		from?: number;
-		to?: number;
-		extended?: boolean;
-		debug?: boolean;
-	} = {}): Promise<TRecentTrack[]> {
-		const goodPassedLimit = limit || API_MAX_LIMIT;
-		const finalLimit =
-			goodPassedLimit > API_MAX_LIMIT ? API_MAX_LIMIT : goodPassedLimit;
+	async getAllUserRecentTracks(
+		params?: TGetAllRecentTracksOptions,
+		debug = true,
+	): Promise<TRecentTrack[]> {
+		debug && console.log("`getAllUserRecentTracks` - params: ", params);
 
-		const baseOptions = getRecentTracksOptionsSchema.parse({
+		const options = getAllOptionsSchema.parse({
 			...this.baseOptions,
-			limit: finalLimit,
-			extended,
+			limit: Number.MAX_SAFE_INTEGER,
+			...params,
 		});
 
-		debug && console.log("Base options: ", baseOptions);
+		debug && console.log("`getAllUserRecentTracks` - options: ", options);
 
-		const response = getRecentTracksSchema.parse(
-			await this.fetch("user.getRecentTracks", baseOptions),
+		return this.fetchAllTracks<TRecentTrack>(
+			"user.getRecentTracks",
+			options,
+			debug,
 		);
-
-		debug &&
-			console.log("Fetched tracks: ", response.recenttracks.track.length);
-
-		const { total } = response.recenttracks["@attr"];
-
-		if (finalLimit < goodPassedLimit) {
-			const neededTracks = goodPassedLimit - finalLimit;
-			const chunks = Math.ceil(neededTracks / CHUNK_SIZE);
-
-			if (debug) {
-				console.log(`Total tracks: ${total}`);
-				console.log(`Needed tracks: ${neededTracks}`);
-				console.log(`Chunks: ${chunks}`);
-			}
-
-			for (let i = 0; i < chunks; i++) {
-				const numberOfApiCallWithinChunk = Math.ceil(
-					(neededTracks - i * CHUNK_SIZE > CHUNK_SIZE
-						? CHUNK_SIZE
-						: neededTracks - i * CHUNK_SIZE) / API_MAX_LIMIT,
-				);
-
-				const newTracks = z.array(getRecentTracksSchema).parse(
-					await Promise.all(
-						Array.from({ length: numberOfApiCallWithinChunk }, (_, j) =>
-							this.fetch("user.getRecentTracks", {
-								...this.baseOptions,
-								limit: API_MAX_LIMIT,
-								page: (i * CHUNK_SIZE) / API_MAX_LIMIT + (j + 2), // since we already fetched the first 1000,
-							}),
-						),
-					),
-				);
-
-				response.recenttracks.track.push(
-					...newTracks.flatMap((t) => t.recenttracks.track),
-				);
-			}
-		}
-
-		return response.recenttracks.track.slice(0, goodPassedLimit);
 	}
 
 	/**
-	 * Get the recent tracks of the user
+	 * Get all the top tracks of the user
 	 *
-	 * @param {object} params - The parameters to pass to the LastFM API
-	 * @param {number} params.limit - The limit of tracks to fetch
-	 * @param {number} params.from - The timestamp to fetch from
-	 * @param {number} params.to - The timestamp to fetch to
-	 * @param {boolean} params.extended - Should the function fetch extended information (default: false)
+	 * @param {TGetAllTopTracksOptions} params - The parameters to pass to the LastFM API
+	 * @param {boolean} debug - Should the function log debug information (default: false)
 	 *
-	 * @param {boolean} params.debug - Should the function log debug information (default: false)
-	 *
-	 * @returns {Promise<TRecentTrack[]} The recent tracks of the user
+	 * @returns {Promise<TTopTrack[]} The top tracks of the user
 	 */
-	async getUserRecentTracks({
-		limit,
-		from,
-		to,
-		extended,
-		debug,
-	}: {
-		limit?: number;
-		from?: number;
-		to?: number;
-		extended?: boolean;
-		debug?: boolean;
-	} = {}): Promise<TRecentTrack[]> {
-		const { goodPassedLimit, finalLimit } = this.getGoodPassedLimit(limit);
+	async getAllUserTopTracks(
+		params: TGetAllTopTracksOptions,
+		debug = false,
+	): Promise<TTopTrack[]> {
+		debug &&
+			console.log(
+				"[LASTFM_HANDLER] - `getAllUserTopTracks` - params: ",
+				params,
+			);
 
-		debug && console.log("from, to, extended", from, to, extended);
-
-		const baseOptions = getRecentTracksOptionsSchema.parse({
+		const options = getAllOptionsSchema.parse({
 			...this.baseOptions,
-			limit: finalLimit,
-			from,
-			to,
-			extended,
+			limit: Number.MAX_SAFE_INTEGER,
+			...params,
 		});
-
-		debug && console.log("baseOptions: ", baseOptions);
-
-		const response = getRecentTracksSchema.parse(
-			await this.fetch("user.getRecentTracks", baseOptions),
-		);
 
 		debug &&
 			console.log(
-				"response.recenttracks.track.length: ",
-				response.recenttracks.track.length,
+				"[LASTFM_HANDLER] - `getAllUserTopTracks` - options: ",
+				options,
 			);
 
-		const { total } = response.recenttracks["@attr"];
-
-		if (finalLimit < goodPassedLimit) {
-			const neededTracks = goodPassedLimit - finalLimit;
-			const chunks = Math.ceil(neededTracks / CHUNK_SIZE);
-
-			if (debug) {
-				console.log(`Total tracks: ${total}`);
-				console.log(`Needed tracks: ${neededTracks}`);
-				console.log(`Chunks: ${chunks}`);
-			}
-
-			for (let i = 0; i < chunks; i++) {
-				const numberOfApiCallWithinChunk = Math.ceil(
-					(neededTracks - i * CHUNK_SIZE > CHUNK_SIZE
-						? CHUNK_SIZE
-						: neededTracks - i * CHUNK_SIZE) / API_MAX_LIMIT,
-				);
-
-				const newTracks = z.array(getRecentTracksSchema).parse(
-					await Promise.all(
-						Array.from({ length: numberOfApiCallWithinChunk }, (_, j) =>
-							this.fetch("user.getRecentTracks", {
-								...this.baseOptions,
-								limit: API_MAX_LIMIT,
-								page: (i * CHUNK_SIZE) / API_MAX_LIMIT + (j + 2), // since we already fetched the first 1000,
-							}),
-						),
-					),
-				);
-
-				for (const track of newTracks) {
-					response.recenttracks.track.push(...track.recenttracks.track);
-				}
-			}
-		}
-
-		return response.recenttracks.track.slice(0, goodPassedLimit);
-	}
-
-	/**
-	 * Get the top tracks of the user
-	 *
-	 * @param {object} params - The parameters to pass to the LastFM API
-	 * @param {number} params.limit - The limit of tracks to fetch
-	 * @param {string} params.period - The period of the top tracks (default: "overall")
-	 * @param {boolean} params.debug - Should the function log debug information (default: false)
-	 *
-	 * @returns {Promise<TTopTrack[]} The loved tracks of the user
-	 */
-	async getUserTopTracks({
-		limit,
-		period,
-		debug,
-	}: { limit?: number; period?: TPeriod; debug?: boolean } = {}): Promise<
-		TTopTrack[]
-	> {
-		const { goodPassedLimit, finalLimit } = this.getGoodPassedLimit(limit);
-
-		const baseOptions = getTopTracksOptionsSchema.parse({
-			...this.baseOptions,
-			limit: finalLimit,
-			period,
-		});
-
-		const response = getTopTracksSchema.parse(
-			await this.fetch("user.getTopTracks", baseOptions),
-		);
-
-		const { total } = response.toptracks["@attr"];
-
-		if (finalLimit < goodPassedLimit) {
-			const neededTracks = goodPassedLimit - finalLimit;
-			const chunks = Math.ceil(neededTracks / CHUNK_SIZE);
-
-			if (debug) {
-				console.log(`Total tracks: ${total}`);
-				console.log(`Needed tracks: ${neededTracks}`);
-				console.log(`Chunks: ${chunks}`);
-			}
-
-			for (let i = 0; i < chunks; i++) {
-				/**
-				 * Calculate the number of API calls needed to fetch the tracks within the chunk
-				 */
-				const numberOfApiCallWithinChunk = Math.ceil(
-					(neededTracks - i * CHUNK_SIZE > CHUNK_SIZE // if we need more than 5000 tracks,
-						? CHUNK_SIZE // fetch 5000 tracks
-						: neededTracks - i * CHUNK_SIZE) / // else fetch the remaining tracks
-						API_MAX_LIMIT, // and divide by 1000 to get the number of API calls needed
-				); // ceil to make sure we fetch all the tracks
-
-				const newTracks = z.array(getTopTracksSchema).parse(
-					await Promise.all(
-						Array.from({ length: numberOfApiCallWithinChunk }, (_, j) =>
-							this.fetch("user.getTopTracks", {
-								...this.baseOptions,
-								limit: API_MAX_LIMIT,
-								page: (i * CHUNK_SIZE) / API_MAX_LIMIT + (j + 2), // since we already fetched the first 1000,
-							}),
-						),
-					),
-				);
-
-				response.toptracks.track.push(
-					...newTracks.flatMap((t) => t.toptracks.track),
-				);
-			}
-		}
-
-		return response.toptracks.track.slice(0, goodPassedLimit);
+		return this.fetchAllTracks<TTopTrack>("user.getTopTracks", options, debug);
 	}
 
 	/**
 	 * Get the currently playing track of the user
 	 *
-	 * @returns {Promise<TRecentTrack | null} The currently playing track of the user
+	 * @returns {Promise<TRecentTrack | false} The currently playing track of the user
 	 */
-	async getCurrentlyPlayingTrack(): Promise<TRecentTrack | null> {
+	async getCurrentlyPlayingTrack(): Promise<TRecentTrack | false> {
 		const response = await this.fetch("user.getRecentTracks", {
 			...this.baseOptions,
 			limit: 1,
@@ -382,7 +206,7 @@ class LastFMHandler {
 			recenttracks: { track },
 		} = getRecentTracksSchema.parse(response);
 
-		return track[0]["@attr"]?.nowplaying ? track[0] : null;
+		return track[0]["@attr"]?.nowplaying ? track[0] : false;
 	}
 
 	/**
@@ -391,15 +215,8 @@ class LastFMHandler {
 	 * @param {string} method - The method to fetch from the LastFM API
 	 * @param {Record<string, string>} params - The parameters to pass to the LastFM API
 	 */
-	private async fetch(
-		method: TMethods,
-		params: TBaseOptions &
-			(
-				| { from?: number; to?: number; extended?: boolean } // getRecentTracks
-				| { period: TPeriod } // getTopTracks
-			),
-	) {
-		const parsedParams = getRecentTracksOptionsSchema.parse(params);
+	private async fetch(method: TMethods, params: TGetAllOptions) {
+		const parsedParams = getAllOptionsSchema.parse(params);
 
 		const response = await axios.get("http://ws.audioscrobbler.com/2.0/", {
 			params: {
@@ -407,7 +224,7 @@ class LastFMHandler {
 				method,
 				user: this.username,
 				format: "json",
-				...params,
+				...parsedParams,
 			},
 		});
 
@@ -435,6 +252,136 @@ class LastFMHandler {
 			goodPassedLimit,
 			finalLimit,
 		};
+	}
+
+	/**
+	 * Generic function to fetch all tracks for a given method
+	 *
+	 * @template T - {TRecentTrack | TTopTrack}
+	 *
+	 * @param {string} method - The method to fetch from the LastFM API
+	 * @param params {TGetAllOptions} - The parameters to pass to the LastFM API
+	 * @param {boolean} debug - Should the function log debug information (default: false)
+	 *
+	 * @returns {Promise<T[]} The tracks fetched from the LastFM API
+	 */
+	private async fetchAllTracks<T extends TRecentTrack | TTopTrack>(
+		method: TMethods,
+		params: TGetAllOptions,
+		debug?: boolean,
+	): Promise<T[]> {
+		const { limit } = params;
+
+		const { goodPassedLimit, finalLimit } = this.getGoodPassedLimit(limit);
+
+		debug &&
+			console.log(
+				"`fetchAllTracks` - goodPassedLimit, finalLimit: ",
+				goodPassedLimit,
+				finalLimit,
+			);
+
+		let options: TGetAllRecentTracksOptions | TGetAllTopTracksOptions;
+		switch (method) {
+			case "user.getRecentTracks":
+				options = getAllRecentTracksOptionsSchema.parse(params);
+				break;
+			case "user.getTopTracks":
+				options = getAllTopTracksOptionsSchema.parse(params);
+				break;
+			default:
+				throw new Error("Invalid method");
+		}
+
+		let response: TGetRecentTracksResponse | TGetTopTracksResponse;
+		let total: number;
+
+		const fetched = await this.fetch(method, { ...params, limit: finalLimit });
+
+		switch (method) {
+			case "user.getRecentTracks":
+				response = getRecentTracksSchema.parse(fetched);
+
+				total = response.recenttracks["@attr"].total;
+				break;
+			case "user.getTopTracks":
+				response = getTopTracksSchema.parse(fetched);
+
+				total = response.toptracks["@attr"].total;
+				break;
+
+			default:
+				throw new Error("Invalid method");
+		}
+
+		const neededTracks =
+			(goodPassedLimit > total ? total : goodPassedLimit) - finalLimit;
+		const chunks = Math.ceil(neededTracks / CHUNK_SIZE);
+
+		if (debug) {
+			console.log(`\`fetchAllTracks\` - Total tracks: ${total}`);
+			console.log(`\`fetchAllTracks\` - Needed tracks: ${neededTracks}`);
+			console.log(`\`fetchAllTracks\` - Chunks: ${chunks}`);
+		}
+
+		if (finalLimit < goodPassedLimit) {
+			for (let i = 0; i < chunks; i++) {
+				/**
+				 * Calculate the number of API calls needed to fetch the tracks within the chunk
+				 */
+				const numberOfApiCallWithinChunk = Math.ceil(
+					(neededTracks - i * CHUNK_SIZE > CHUNK_SIZE // if we need more than 5000 tracks,
+						? CHUNK_SIZE // fetch 5000 tracks
+						: neededTracks - i * CHUNK_SIZE) / // else fetch the remaining tracks
+						API_MAX_LIMIT, // and divide by 1000 to get the number of API calls needed
+				); // ceil to make sure we fetch all the tracks
+
+				const newFetches = await Promise.all(
+					Array.from({ length: numberOfApiCallWithinChunk }, (_, j) =>
+						this.fetch(method, {
+							...options,
+							limit: API_MAX_LIMIT,
+							page: (i * CHUNK_SIZE) / API_MAX_LIMIT + (j + 2), // since we already fetched the first 1000,
+						}),
+					),
+				);
+
+				switch (method) {
+					case "user.getRecentTracks": {
+						const newTracks = z.array(getRecentTracksSchema).parse(newFetches);
+
+						(response as TGetRecentTracksResponse).recenttracks.track.push(
+							...newTracks.flatMap((t) => t.recenttracks.track),
+						);
+
+						break;
+					}
+					case "user.getTopTracks": {
+						const newTracks = z.array(getTopTracksSchema).parse(newFetches);
+
+						(response as TGetTopTracksResponse).toptracks.track.push(
+							...newTracks.flatMap((t) => t.toptracks.track),
+						);
+
+						break;
+					}
+				}
+			}
+		}
+
+		let finalTracks: T[];
+		switch (method) {
+			case "user.getRecentTracks":
+				finalTracks = (response as TGetRecentTracksResponse).recenttracks
+					.track as T[];
+				break;
+			case "user.getTopTracks":
+				finalTracks = (response as TGetTopTracksResponse).toptracks
+					.track as T[];
+				break;
+		}
+
+		return finalTracks.slice(0, goodPassedLimit);
 	}
 }
 
