@@ -1,12 +1,40 @@
 import { z } from "zod";
 
+// Zod base
+const zodStringBoolean = z
+	.union([z.literal("false"), z.literal("true")])
+	.transform((value) => value.toLowerCase() === "true");
+
+export const zodBooleanUnion = z.union([
+	z.literal(0).transform(() => false),
+	z.literal(1).transform(() => true),
+	z
+		.union([z.literal("0"), z.literal("1")])
+		.transform((v) => !!Number.parseInt(v, 10)),
+	z
+		.string()
+		.transform((v) => v.toLowerCase())
+		.pipe(zodStringBoolean),
+
+	z.boolean(),
+]);
+
 const MethodsSchema = z.enum([
 	"user.getRecentTracks",
 	"user.getLovedTracks",
 	"user.getTopTracks",
+
+	"track.getInfo",
 ]);
 
 export type TMethods = z.infer<typeof MethodsSchema>;
+
+// Error response
+export const errorResponseSchema = z.object({
+	error: z.coerce.number(),
+	message: z.string(),
+	links: z.array(z.any()),
+});
 
 /**
  * QUERY TYPES
@@ -25,21 +53,7 @@ export const getRecentTracksOptionsSchema = BaseOptionsSchema.extend({
 		.date()
 		.transform((date) => date.getTime())
 		.optional(),
-	extended: z
-		.string()
-		.transform((value) => {
-			if (value === "true" || value === "1") {
-				return true;
-			}
-
-			if (value === "false" || value === "0") {
-				return false;
-			}
-
-			throw new Error("Invalid boolean value");
-		})
-		.or(z.coerce.boolean())
-		.optional(),
+	extended: zodBooleanUnion.optional(),
 });
 
 export type TGetRecentTracksOptions = z.infer<
@@ -68,6 +82,26 @@ export const getTopTracksOptionsSchema = getAllTopTracksOptionsSchema.extend({
 	page: z.coerce.number().min(1).optional(),
 });
 
+export const getTrackInfoRequest = z
+	.object({
+		mbid: z.string().optional(),
+		track: z.string().optional(),
+		artist: z.string().optional(),
+		autocorrect: zodBooleanUnion.optional(),
+		limit: z.undefined(),
+	})
+	.refine(
+		(data) => {
+			return !!data.mbid || (data.track && data.artist);
+		},
+		{
+			message: "Either 'mbid' or both 'track' and 'artist' are required",
+			path: ["mbid", "track", "artist"], // Add this path to indicate where the error occurs
+		},
+	);
+
+export type TGetTrackInfoRequest = z.infer<typeof getTrackInfoRequest>;
+
 export type TGetTopTracksOptions = z.infer<typeof getTopTracksOptionsSchema>;
 /**
  * The base options schema for all the methods
@@ -84,9 +118,11 @@ export type TGetTopTracksOptions = z.infer<typeof getTopTracksOptionsSchema>;
  *
  * The groups are mutually exclusive
  */
-export const getAllOptionsSchema = BaseOptionsSchema.extend({
-	limit: z.coerce.number().min(1).optional().default(100),
-}).and(getAllRecentTracksOptionsSchema.or(getAllTopTracksOptionsSchema));
+export const getAllOptionsSchema = z.union([
+	getTrackInfoRequest.and(BaseOptionsSchema),
+	getAllRecentTracksOptionsSchema,
+	getAllTopTracksOptionsSchema,
+]);
 
 export type TGetAllOptions = z.infer<typeof getAllOptionsSchema>;
 
@@ -208,3 +244,76 @@ export const getTopTracksSchema = z.object({
 });
 
 export type TGetTopTracksResponse = z.infer<typeof getTopTracksSchema>;
+
+const getTrackInfoAlbumSchema = z.object({
+	artist: z.string(),
+	title: z.string(),
+	mbid: z.string(),
+	url: z.string(),
+	image: z.array(TrackImageSchema),
+	"@attr": z.object({
+		position: z.coerce.number(),
+	}),
+});
+
+const getTrackInfoNoUser = BaseObjectSchema.extend({
+	duration: z.coerce.number().transform((v) => msToTime(v)),
+	streamable: StreamableSchema,
+	listeners: z.coerce.number(),
+	playcount: z.coerce.number(),
+	artist: BaseObjectSchema,
+	album: getTrackInfoAlbumSchema,
+	toptags: z.object({
+		tag: z.array(z.object({ name: z.string(), url: z.string() })),
+	}),
+	wiki: z.object({
+		published: z.coerce.date(),
+		summary: z.string(),
+		content: z.string(),
+	}),
+});
+
+const getTrackInfoWithUser = getTrackInfoNoUser.extend({
+	userplaycount: z.coerce.number(),
+	userloved: z.coerce.number().pipe(z.coerce.boolean()),
+});
+
+export const getTrackInfoNoUserResponse = z
+	.object({
+		track: z.union([getTrackInfoNoUser, getTrackInfoWithUser]),
+	})
+	.or(errorResponseSchema);
+
+export type TGetTrackInfoNoUserResponse = z.infer<
+	typeof getTrackInfoNoUserResponse
+>;
+
+/**
+ * Convert miliseconds to object
+ *
+ * @param ms The number of miliseconds
+ *
+ */
+export const msToTime = (ms: number) => {
+	const seconds = Math.floor((ms / 1000) % 60);
+	const minutes = Math.floor((ms / (1000 * 60)) % 60);
+	const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+
+	const stringified = {
+		seconds: seconds.toString().padStart(2, "0"),
+		minutes: minutes.toString().padStart(2, "0"),
+		hours: hours.toString().padStart(2, "0"),
+	};
+
+	return {
+		hours,
+		minutes,
+		seconds,
+		string:
+			hours > 0
+				? `${stringified.hours}:${stringified.minutes}:${stringified.seconds}`
+				: minutes > 0
+					? `${stringified.minutes}:${stringified.seconds}`
+					: `${stringified.seconds}`,
+	};
+};

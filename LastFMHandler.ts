@@ -31,6 +31,8 @@ import {
 	type TGetAllTopTracksOptions,
 	type TGetRecentTracksResponse,
 	type TGetTopTracksResponse,
+	type TGetTrackInfoNoUserResponse,
+	type TGetTrackInfoRequest,
 	type TLovedTrack,
 	type TMethods,
 	type TRecentTrack,
@@ -40,6 +42,8 @@ import {
 	getAllTopTracksOptionsSchema,
 	getRecentTracksSchema,
 	getTopTracksSchema,
+	getTrackInfoNoUserResponse,
+	getTrackInfoRequest,
 	getUserLovedTracksSchema,
 } from "./types";
 
@@ -96,7 +100,7 @@ class LastFMHandler {
 	 */
 	async getUserLovedTracks(limit?: number): Promise<TLovedTrack[]> {
 		const finalLimit = limit
-			? limit <= this.baseOptions.limit
+			? limit <= (this.baseOptions.limit ?? 1000)
 				? limit
 				: this.baseOptions.limit
 			: this.baseOptions.limit;
@@ -192,6 +196,34 @@ class LastFMHandler {
 	}
 
 	/**
+	 * Get track info
+	 *
+	 * @param {TGetTrackInfoRequest} params - The parameters to pass to the LastFM API
+	 * @param {boolean} debug - Should the function log debug information (default: false)
+	 *
+	 * @returns {Promise<TGetTrackInfoNoUserResponse} The track info
+	 */
+	async getTrackInfo(
+		params: TGetTrackInfoRequest,
+		debug = false,
+	): Promise<TGetTrackInfoNoUserResponse> {
+		debug &&
+			console.log("[LASTFM_HANDLER] - `getTrackInfo` - params: ", params);
+
+		const options = getTrackInfoRequest.parse(params);
+
+		debug &&
+			console.log("[LASTFM_HANDLER] - `getTrackInfo` - options: ", options);
+
+		const response = await this.fetch("track.getInfo", options);
+
+		debug &&
+			console.log("[LASTFM_HANDLER] - `getTrackInfo` - response: ", response);
+
+		return getTrackInfoNoUserResponse.parse(response);
+	}
+
+	/**
 	 * Get the currently playing track of the user
 	 *
 	 * @returns {Promise<TRecentTrack | false} The currently playing track of the user
@@ -215,8 +247,12 @@ class LastFMHandler {
 	 * @param {string} method - The method to fetch from the LastFM API
 	 * @param {Record<string, string>} params - The parameters to pass to the LastFM API
 	 */
-	private async fetch(method: TMethods, params: TGetAllOptions) {
+	private async fetch(method: TMethods, params: TGetAllOptions, debug = false) {
+		debug && console.log("`fetch` - method, params: ", method, params);
+
 		const parsedParams = getAllOptionsSchema.parse(params);
+
+		debug && console.log("`fetch` - parsedParams: ", parsedParams);
 
 		const response = await axios.get("http://ws.audioscrobbler.com/2.0/", {
 			params: {
